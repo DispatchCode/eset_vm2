@@ -1,0 +1,303 @@
+.dataSize 10000
+.code
+
+sub r14, r14, r14 # stack init
+
+consoleRead r8
+consoleRead r9
+
+call push8
+call push9
+call xor
+
+consoleWrite r0
+
+hlt
+
+xor:
+	# read arguments
+	call pop1 # arg1
+	call pop0 # arg2
+	
+	# save spoiled registers
+	call push2
+	call push3
+	call push4
+	call push5
+	call push6
+	call push7
+	call push8
+	call push10
+	
+	# r0 - arg1
+	# r1 - arg2
+	# r10 - result
+	sub r10, r10, r10
+	
+	sub r2, r2, r2
+	
+	loadConst 2, r7 # fix constant (was reused by compare)
+				
+	loadConst 0x8000000000000000, r3 # in first loop, we will add 0x8000000000000000
+	mov r3, r4 # subsequent loops will use that variable as step bit
+	loadConst 0xFFFFFFFFFFFFFFFF, r8
+	
+	xor_loop:
+		jumpEqual xor_firstZero, r0, r2 #first zero
+		jump xor_not_zero
+		xor_firstZero:
+			jumpEqual xor_endLoop, r1, r2 # both zero - end loop
+
+		xor_not_zero:
+		
+			#if sign of numbers differ, append 1 to output
+		
+			compare r0, r2, r5 # sign of arg1
+			compare r1, r2, r6 # sign of arg2
+
+			compare r5, r8, r5
+			compare r6, r8, r6 # normalize
+			
+			jumpEqual xor_same, r5, r6
+				#bits differ - add 1
+				add r10, r4, r10 # add the bit and be done
+				
+				jump xor_bit_done
+			xor_same:
+				#bits are same - add 0
+
+			xor_bit_done:
+			
+				jumpEqual xor_bit_mask_first, r3, r4
+					div r4, r7, r4 # shift mask bit to next position
+				jump xor_bit_done_with_mask
+				
+				xor_bit_mask_first:
+					loadConst 0x4000000000000000, r4 # we can't divide 0x8000000000000000 to get 0x4000000000000000, so just set it manually
+				
+			xor_bit_done_with_mask:
+				mul r0, r7, r0
+				mul r1, r7, r1 # shift to next bit
+		
+		jump xor_loop
+	xor_endLoop:
+	
+	# save result
+	mov r10, r0
+	
+	# restore spoiled registers
+	call pop10
+	call pop8
+	call pop7
+	call pop6
+	call pop5
+	call pop4
+	call pop3
+	call pop2
+	
+	ret
+
+
+
+# pregenetated stack helpers 
+
+# push implementations (pregenerated)
+
+
+push0:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r0, qword[r14]
+	ret
+
+
+push1:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r1, qword[r14]
+	ret
+
+
+push2:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r2, qword[r14]
+	ret
+
+
+push3:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r3, qword[r14]
+	ret
+
+
+push4:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r4, qword[r14]
+	ret
+
+
+push5:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r5, qword[r14]
+	ret
+
+
+push6:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r6, qword[r14]
+	ret
+
+
+push7:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r7, qword[r14]
+	ret
+
+
+push8:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r8, qword[r14]
+	ret
+
+
+push9:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r9, qword[r14]
+	ret
+
+
+push10:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r10, qword[r14]
+	ret
+
+
+push11:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r11, qword[r14]
+	ret
+
+
+push12:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r12, qword[r14]
+	ret
+
+
+push13:
+	loadConst 8, r2
+	add r14, r2, r14
+	mov r13, qword[r14]
+	ret
+
+
+# pop implementations (pregenerated)
+
+
+pop0:
+	loadConst 8, r2
+	mov qword[r14], r0
+	sub r14, r2, r14
+	ret
+
+
+pop1:
+	loadConst 8, r2
+	mov qword[r14], r1
+	sub r14, r2, r14
+	ret
+
+
+pop2:
+	loadConst 8, r2
+	mov qword[r14], r2
+	sub r14, r2, r14
+	ret
+
+
+pop3:
+	loadConst 8, r2
+	mov qword[r14], r3
+	sub r14, r2, r14
+	ret
+
+
+pop4:
+	loadConst 8, r2
+	mov qword[r14], r4
+	sub r14, r2, r14
+	ret
+
+
+pop5:
+	loadConst 8, r2
+	mov qword[r14], r5
+	sub r14, r2, r14
+	ret
+
+
+pop6:
+	loadConst 8, r2
+	mov qword[r14], r6
+	sub r14, r2, r14
+	ret
+
+
+pop7:
+	loadConst 8, r2
+	mov qword[r14], r7
+	sub r14, r2, r14
+	ret
+
+
+pop8:
+	loadConst 8, r2
+	mov qword[r14], r8
+	sub r14, r2, r14
+	ret
+
+
+pop9:
+	loadConst 8, r2
+	mov qword[r14], r9
+	sub r14, r2, r14
+	ret
+
+
+pop10:
+	loadConst 8, r2
+	mov qword[r14], r10
+	sub r14, r2, r14
+	ret
+
+
+pop11:
+	loadConst 8, r2
+	mov qword[r14], r11
+	sub r14, r2, r14
+	ret
+
+
+pop12:
+	loadConst 8, r2
+	mov qword[r14], r12
+	sub r14, r2, r14
+	ret
+
+
+pop13:
+	loadConst 8, r2
+	mov qword[r14], r13
+	sub r14, r2, r14
+	ret

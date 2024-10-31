@@ -1,0 +1,70 @@
+.dataSize 0
+.code
+
+consoleRead r8
+consoleRead r9
+
+call xor
+
+consoleWrite r10
+
+hlt
+
+call xor
+
+hlt
+
+xor:
+	# r8 - arg1
+	# r9 - arg2
+	# r10 - result
+	sub r10, r10, r10
+	
+	sub r15, r15, r15
+	
+	loadConst 0x8000000000000000, r11 # in first loop, we will add 0x8000000000000000
+	mov r11, r12 # subsequent loops will use that variable as step bit
+	loadConst 0xFFFFFFFFFFFFFFFF, r7
+	
+	xor_loop:
+		jumpEqual xor_firstZero, r8, r15 #first zero
+		jump xor_not_zero
+		xor_firstZero:
+			jumpEqual xor_endLoop, r9, r15 # both zero - end loop
+
+		xor_not_zero:
+		
+			#if sign of numbers differ, append 1 to output
+		
+			compare r8, r15, r13 # sign of arg1
+			compare r9, r15, r14 # sign of arg2
+			
+			compare r13, r7, r13
+			compare r14, r7, r14 # normalize
+			
+			jumpEqual xor_same, r13, r14
+				#bits differ - add 1
+				add r10, r12, r10 # add the bit and be done
+				
+				jump xor_bit_done
+			xor_same:
+				#bits are same - add 0
+
+			xor_bit_done:
+				loadConst 2, r14 # fix constant (was reused by compare)
+			
+				jumpEqual xor_bit_mask_first, r11, r12
+					div r12, r14, r12 # shift mask bit to next position
+				jump xor_bit_done_with_mask
+				
+				xor_bit_mask_first:
+					loadConst 0x4000000000000000, r12 # we can't divide 0x8000000000000000 to get 0x4000000000000000, so just set it manually
+				
+			xor_bit_done_with_mask:
+				mul r8, r14, r8
+				mul r9, r14, r9 # shift to next bit
+		
+		jump xor_loop
+	xor_endLoop:
+	ret
+	

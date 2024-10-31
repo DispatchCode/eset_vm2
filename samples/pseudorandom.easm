@@ -1,0 +1,41 @@
+.dataSize 8
+.code
+
+	loadConst 100, r15 # lockIndex
+	createThread threadProc, r14
+
+	consoleRead r0
+
+	loadConst 0, r0
+	loadConst 1, r1
+
+	lock r15
+	mov r1, qword[r0]
+	unlock r15
+
+	joinThread r14
+
+	loadConst 0, r0
+	consoleWrite qword[r0]
+
+	hlt
+
+threadProc:
+	loadConst 0, r0
+	loadConst 6364136223846793005, r1 # mul
+	loadConst 1442695040888963407, r2 # add
+	loadConst 3537, r3 # seed
+
+	loop:
+		lock r15
+		jumpEqual continue, qword[r0], r0
+			# finish
+			mov r3, qword[r0] # store final result
+			unlock r15
+			hlt
+	continue:
+			mul r3, r1, r3
+			add r3, r2, r3
+		unlock r15
+		jump loop
+		

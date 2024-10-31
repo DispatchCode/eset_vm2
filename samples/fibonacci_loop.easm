@@ -1,0 +1,23 @@
+.dataSize 0
+.code
+
+loadConst 0, r1 # first
+loadConst 1, r2 # second
+
+loadConst 1, r14 # loop helper
+
+consoleRead r3
+
+loop:
+	jumpEqual end, r3, r15
+
+	add r1, r2, r4
+	mov r2, r1
+	mov r4, r2
+	
+	consoleWrite r1
+	
+	sub r3, r14, r3
+	jump loop
+end:
+	hlt

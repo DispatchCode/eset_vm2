@@ -1,0 +1,60 @@
+.dataSize 0
+.code
+
+	consoleRead r15 # number of instances
+	loadConst 0, r0
+	jumpEqual end, r0, r15 # if zero was read, exit
+	
+	# create threads and let them run forever
+	loadConst 0, r1
+	loadConst 1, r2
+spawnLoop:
+	jumpEqual wait, r1, r15
+		createThread threadProc, r14 # discard thread handle, as we wait forever
+		
+		add r1, r2, r1
+		jump spawnLoop
+
+wait:
+	# pause main thread forever
+	loadConst 1000, r0
+	sleep r0
+	jump wait
+	
+end:
+	hlt
+	
+	
+threadProc:
+	# our index is in r1,
+	# we want to eat using r1 and (r1 + 1) mod r15
+	
+	loadConst 50, r14 # eating time
+	
+	# compute first fork index
+	mov r1, r10
+	# compute second fork index
+	mov r1, r11
+	loadConst 1, r0
+	add r11, r0, r11
+	# if first fork index is equal to r15, then return to zero and flip forks
+	jumpEqual lastPhilosopher, r10, r15
+	
+	jump eatLoop
+	
+lastPhilosopher:
+	# second fork is first fork
+	mov r10, r11
+	# first fork is zero
+	loadConst 0, r10
+	
+eatLoop:
+
+	lock r10
+	lock r11
+	consoleWrite r1
+	sleep r14
+	
+	unlock r10
+	unlock r11
+	jump eatLoop

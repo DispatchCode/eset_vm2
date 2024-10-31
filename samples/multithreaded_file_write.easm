@@ -1,0 +1,52 @@
+.dataSize 16000
+.code
+
+loadConst 0, r0
+loadConst 1000, r1
+loadConst 8, r2
+loadConst 0, r4
+loadConst 1, r5
+loadConst 100, r6
+
+loop1:
+jumpEqual done, r0, r1
+
+createThread threadProc, qword[r4]
+add r4, r2, r4
+
+add r0, r5, r0
+
+jump loop1
+
+done:
+
+loadConst 0, r0
+loadConst 0, r4
+
+loop2:
+jumpEqual end, r0, r1
+
+joinThread qword[r4]
+
+add r4, r2, r4
+add r0, r5, r0
+jump loop2
+
+end:
+hlt
+
+threadProc:
+	#consoleWrite r0
+	#r0 - threadIndex
+	loadConst 8000, r1 # scratch space
+	loadConst 2, r3 # size
+	
+	mul r0, r3, r5
+	add r5, r1, r6
+	
+	mov r0, word[r6]
+	write r5, r3, r6
+	
+	hlt
+
+.data

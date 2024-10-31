@@ -1,0 +1,32 @@
+.dataSize 8
+.code
+
+loadConst 123, r15
+lock r15
+
+createThread threadProc, r0
+
+loadConst 0, r1
+loadConst 0x100, r2
+mov r2, qword[r1]
+
+unlock r15
+
+joinThread r0
+
+loadConst 0, r0
+consoleWrite qword[r0]
+
+hlt
+
+threadProc:
+	loadConst 123, r15
+	lock r15
+
+	loadConst 0, r1
+	loadConst 0x200, r2
+
+	add qword[r0], r2, qword[r0]
+
+	unlock r15
+hlt

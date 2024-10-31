@@ -1,0 +1,18 @@
+.dataSize 8
+.code
+
+createThread threadProc, r0
+
+joinThread r0
+
+loadConst 0, r0
+consoleWrite qword[r0]
+
+hlt
+
+threadProc:
+	loadConst 0, r0
+	loadConst 0x0123456789ABCDEF, r1
+
+	mov r1, qword[r0]
+	hlt

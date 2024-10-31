@@ -1,0 +1,109 @@
+math.evm
+
+	Reads nothing from console
+	Writes to console:
+		0000000000000118
+		00000000000000e8
+		000000000000000a
+		0000000000000010
+		0000000000001800
+		0000000000000001
+
+
+
+memory.evm
+
+	Reads nothing from console
+	Writes to console:
+		0123456789abcdef
+		0000000089abcdef
+		000000000000cdef
+		00000000000000ef
+		0000000001234567
+		0000000001234567
+		0000000000004567
+		0000000000000067
+		0000000000000000
+		0000000000000000
+		0000000000000000
+		0000000000000000
+
+
+
+fibonacci_loop.evm
+
+	Reads number of sequence numbers to print
+	Writes to console as much of Fibonacci number as requested
+
+
+
+xor.evm
+xor-with-stack-frame.evm
+
+	Reads two numbers from console
+	Writes xor of read numbers to the console
+
+
+
+crc.evm
+
+	Computes crc32 of provided input file
+	
+	For crc.bin, output will be
+		000000008407759b
+
+
+
+threadingBase.evm
+
+	Create a new thread
+	In thread write 0x0123456789abcdef to memory
+	Join the thread in main
+	Print the memory
+
+	Reads nothing from console
+	Writes to console:
+		0123456789abcdef
+
+
+lock.evm
+
+	Acquire a lock in main thread
+	Create a thread that waits for this lock
+	In main thread, write 0x100 to memory and release the lock
+	In thread add 0x200 to memory
+	Join the thread in main
+	Print the value from memory
+
+	Reads nothing from console
+	Writes to console
+		0000000000000300
+
+
+multithreaded_file_write.evm
+
+	Create 1000 threads, giving each one a sequential index
+	In each thread, write index given, as word, to 2 * index offset of output file
+	Join all threads
+
+	Reads nothing from console
+	Writes nothing to console
+	Writes output same as multithreaded_file_write.bin
+
+
+pseudorandom.evm
+
+	Creates a background thread that computes Linear congruential generator
+	In main thread, once a number is entered into console, synchronize with background thread and print the current random number
+
+	Reads dummy value from console
+	Writes random number to console
+	
+
+
+philosophers.evm
+
+	Simulates Dining philosophers problem
+	
+	Reads number of threads to simulate from console
+	Writes indexes of philosopher that starts eating

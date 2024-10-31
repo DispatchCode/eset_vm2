@@ -1,0 +1,25 @@
+.dataSize 0
+.code
+
+loadConst 0x100, r0
+loadConst 0x18, r1
+
+add r0, r1, r2
+consoleWrite r2
+
+sub r0, r1, r2
+consoleWrite r2
+
+div r0, r1, r2
+consoleWrite r2
+
+mod r0, r1, r2
+consoleWrite r2
+
+mul r0, r1, r2
+consoleWrite r2
+
+compare r0, r1, r2
+consoleWrite r2
+
+hlt
