@@ -78,49 +78,27 @@ uint8_t op_index_shift[8] = {
 };
 
 struct instr_info instr_table[22] = {
-    // mov
     INIT_INSTR_PROP(3, 13, 2, 0, 0, "mov"),
-    // loadConst
     INIT_INSTR_PROP(3, 72, 1, 0, 1, "loadConst"),
-    // add
     INIT_INSTR_PROP(6, 21, 3, 0, 0, "add"),
-    // sub
     INIT_INSTR_PROP(6, 21, 3, 0, 0, "sub"),
-    // div
     INIT_INSTR_PROP(6, 21, 3, 0, 0, "div"),
-    // mod  
     INIT_INSTR_PROP(6, 21, 3, 0, 0, "mod"),
-    // mul
     INIT_INSTR_PROP(6, 21, 3, 0, 0, "mul"),
-    // compare
     INIT_INSTR_PROP(5, 20, 3, 0, 0, "compare"),
-    // jump 
     INIT_INSTR_PROP(5, 37, 0, 1, 0, "jump"),
-    // jump equal
     INIT_INSTR_PROP(5, 47, 2, 1, 0, "jumpEqual"),
-    // read 
     INIT_INSTR_PROP(5, 25, 4, 0, 0, "read"),
-    // write
     INIT_INSTR_PROP(5, 20, 3, 0, 0, "write"),
-    // consoleRead
     INIT_INSTR_PROP(5, 10, 1, 0, 0, "consoleRead"),
-    // consolwWrite
     INIT_INSTR_PROP(5, 10, 1, 0, 0, "consoleWrite"),
-    // createThread
     INIT_INSTR_PROP(5, 42, 1, 1, 0, "createThread"),
-    // joinThread   
     INIT_INSTR_PROP(5, 10, 1, 0, 0, "joinThread"),
-    // hlt
     INIT_INSTR_PROP(5, 5, 0, 0, 0, "hlt"),
-    // sleep
     INIT_INSTR_PROP(5, 10, 1, 0, 0, "sleep"),
-    // call
     INIT_INSTR_PROP(4, 34, 0, 1, 0, "call"),
-    // ret
     INIT_INSTR_PROP(4, 4, 0, 0, 0, "ret"),
-    // lock 
     INIT_INSTR_PROP(4, 9, 1, 0, 0, "lock"),
-    // unlock
     INIT_INSTR_PROP(4, 9, 1, 0, 0, "unlock")
 };
 
