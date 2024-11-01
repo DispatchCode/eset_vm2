@@ -11,7 +11,7 @@
 #define MOD 		0x50
 #define MUL 		0x54
 #define COMPARE 	0x60
-#define JUMP		0x64
+#define JUMP		0x68
 #define JUMP_EQUAL 	0x70
 #define READ		0x80
 #define WRITE		0x88
@@ -26,30 +26,32 @@
 #define LOCK		0xE0
 #define UNLOCK		0xF0
 
-uint8_t opcode_map[23] = {
+uint8_t opcode_map[22] = {
 	MOV, LOAD_CONST, ADD, SUB, DIV, MOD, MUL, COMPARE, JUMP, 
-	JUMP_EQUAL, READ_WRITE, CONS_READ, CONS_WRITE, C_THREAD,
+	JUMP_EQUAL, READ, WRITE, CONS_READ, CONS_WRITE, C_THREAD,
 	J_THREAD, HLT, SLEEP, CALL, RET, LOCK, UNLOCK	
 };
 
 struct instr_info
 {
-	uint8_t op_size;
-	uint8_t len;
-	uint8_t nr_args;
-	uint8_t addr;
-	uint8_t constant;
+    uint8_t op_size;
+    uint8_t len;
+    uint8_t nr_args;
+    uint8_t addr;
+    uint8_t constant;
+    char *mnemonic;
 };
 
-#define INIT_INSTR_PROP(_op_size, _len, _nr_args, _addr, _constant)	\
-		{															\
-			.op_size   = _op_size,									\
-			.len	   = _len, 										\
-			.nr_args   = _nr_args,									\
-			.addr	   = _addr,										\
-			.constant  = _constant									\
-		}															\
-
+#define INIT_INSTR_PROP(_op_size, _len, _nr_args, _addr, _constant, _mnemonic) \
+        {                                                                   \
+            .op_size   = _op_size,                                          \
+            .len       = _len,                                              \
+            .nr_args   = _nr_args,                                          \
+            .addr      = _addr,                                             \
+            .constant  = _constant,                                         \
+            .mnemonic  = _mnemonic                                          \
+        }
+ 
 struct esetvm2_instruction
 {
 	uint8_t  opcode;   // Opcode
@@ -69,55 +71,57 @@ uint8_t op_grp_table[8] = {
 	0, 0, 0x1C, 0x18, 0x18, 0x18, 0x10, 0x10
 };
 
+// (op & op_grp_table[grp]) >> op_index_shift[grp]
+// get the 'index' part of the opcode
 uint8_t op_index_shift[8] = {
 	0, 0, 2, 3, 3, 3, 4, 4
 };
 
-struct instr_info instr_table[23] = {
-	// mov
-	INIT_INSTR_PROP(3, 13, 2, 0, 0), 
-	// loadConst
-	INIT_INSTR_PROP(3, 72, 1, 0, 1), 
-	// add
-	INIT_INSTR_PROP(6, 21, 3, 0, 0),
-	// sub
-	INIT_INSTR_PROP(6, 21, 3, 0, 0), 
-	// div
-	INIT_INSTR_PROP(6, 21, 3, 0, 0), 
-	// mod	
-	INIT_INSTR_PROP(6, 21, 3, 0, 0),
-	// mul
-	INIT_INSTR_PROP(6, 21, 3, 0, 0), 
-	// compare
-	INIT_INSTR_PROP(5, 20, 3, 0, 0), 
-	// jump	
-	INIT_INSTR_PROP(5, 37, 0, 1, 0),
-	// jump equal
-	INIT_INSTR_PROP(5, 47, 2, 1, 0),
-	// read	
-	INIT_INSTR_PROP(5, 25, 4, 0, 0), 
-	// write
-	INIT_INSTR_PROP(5, 20, 3, 0, 0),
-	// consoleRead
-	INIT_INSTR_PROP(5, 10, 1, 0, 0), 
-	// consolwWrite
-	INIT_INSTR_PROP(5, 10, 1, 0, 0), 
-	// createThread
-	INIT_INSTR_PROP(5, 42, 1, 1, 0),
-	// joinThread	
-	INIT_INSTR_PROP(5, 10, 1, 0, 0), 
-	// hlt
-	INIT_INSTR_PROP(5, 5, 0, 0, 0), 
-	// sleep
-	INIT_INSTR_PROP(5, 10, 1, 0, 0),
-	// call
-	INIT_INSTR_PROP(4, 34, 0, 1, 0), 
-	// ret
-	INIT_INSTR_PROP(4, 4, 0, 0, 0), 
-	// lock	
-	INIT_INSTR_PROP(4, 9, 1, 0, 0),
-	// unlock
-	INIT_INSTR_PROP(4, 9, 1, 0, 0) 
+struct instr_info instr_table[22] = {
+    // mov
+    INIT_INSTR_PROP(3, 13, 2, 0, 0, "mov"),
+    // loadConst
+    INIT_INSTR_PROP(3, 72, 1, 0, 1, "loadConst"),
+    // add
+    INIT_INSTR_PROP(6, 21, 3, 0, 0, "add"),
+    // sub
+    INIT_INSTR_PROP(6, 21, 3, 0, 0, "sub"),
+    // div
+    INIT_INSTR_PROP(6, 21, 3, 0, 0, "div"),
+    // mod  
+    INIT_INSTR_PROP(6, 21, 3, 0, 0, "mod"),
+    // mul
+    INIT_INSTR_PROP(6, 21, 3, 0, 0, "mul"),
+    // compare
+    INIT_INSTR_PROP(5, 20, 3, 0, 0, "compare"),
+    // jump 
+    INIT_INSTR_PROP(5, 37, 0, 1, 0, "jump"),
+    // jump equal
+    INIT_INSTR_PROP(5, 47, 2, 1, 0, "jumpEqual"),
+    // read 
+    INIT_INSTR_PROP(5, 25, 4, 0, 0, "read"),
+    // write
+    INIT_INSTR_PROP(5, 20, 3, 0, 0, "write"),
+    // consoleRead
+    INIT_INSTR_PROP(5, 10, 1, 0, 0, "consoleRead"),
+    // consolwWrite
+    INIT_INSTR_PROP(5, 10, 1, 0, 0, "consoleWrite"),
+    // createThread
+    INIT_INSTR_PROP(5, 42, 1, 1, 0, "createThread"),
+    // joinThread   
+    INIT_INSTR_PROP(5, 10, 1, 0, 0, "joinThread"),
+    // hlt
+    INIT_INSTR_PROP(5, 5, 0, 0, 0, "hlt"),
+    // sleep
+    INIT_INSTR_PROP(5, 10, 1, 0, 0, "sleep"),
+    // call
+    INIT_INSTR_PROP(4, 34, 0, 1, 0, "call"),
+    // ret
+    INIT_INSTR_PROP(4, 4, 0, 0, 0, "ret"),
+    // lock 
+    INIT_INSTR_PROP(4, 9, 1, 0, 0, "lock"),
+    // unlock
+    INIT_INSTR_PROP(4, 9, 1, 0, 0, "unlock")
 };
 
 #endif
