@@ -21,7 +21,10 @@ int main() {
 	}
 
 	print_task_hdr(eset_vm_hdr);
-
+	
+	struct esetvm2_instruction *instructions = calloc(eset_vm_hdr->code_size, sizeof(struct esetvm2_instruction));
+	printf("Decoding instructions...\n");	
+	
 clean:
 	if (eset_vm.memory)
 		free(eset_vm.memory);

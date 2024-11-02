@@ -40,6 +40,7 @@ struct instr_info
     uint8_t addr;
     uint8_t constant;
     char *mnemonic;
+	uint8_t raw_data[9]; // instr. data, next to the OP
 };
 
 #define INIT_INSTR_PROP(_op_size, _len, _nr_args, _addr, _constant, _mnemonic) \

@@ -1,1 +1,6 @@
 *.o
+tags
+CMakeFiles/
+esetvm2
+cmake_install.cmake
+CMakeCache.txt
