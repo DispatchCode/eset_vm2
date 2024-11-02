@@ -96,7 +96,7 @@ struct instr_info instr_table[22] = {
     INIT_INSTR_PROP(5, 10, 1, 0, 0, "joinThread"),
     INIT_INSTR_PROP(5, 5, 0, 0, 0, "hlt"),
     INIT_INSTR_PROP(5, 10, 1, 0, 0, "sleep"),
-    INIT_INSTR_PROP(4, 34, 0, 1, 0, "call"),
+    INIT_INSTR_PROP(4, 36, 0, 1, 0, "call"),
     INIT_INSTR_PROP(4, 4, 0, 0, 0, "ret"),
     INIT_INSTR_PROP(4, 9, 1, 0, 0, "lock"),
     INIT_INSTR_PROP(4, 9, 1, 0, 0, "unlock")
