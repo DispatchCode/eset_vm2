@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "esetvm2.h"
-#include "esetvm2hdr.h"
 
 void print_task_hdr(struct esetvm2hdr * vm_hdr)
 {
@@ -12,7 +11,7 @@ void print_task_hdr(struct esetvm2hdr * vm_hdr)
 	for(int i=0; i<sizeof(vm_hdr->magic); i++)
 		printf("%c", vm_hdr->magic[i]);
 	
-	printf("\nSize of code (instructions): %d\n", vm_hdr->code_size);
+	printf("\nSize of code (bytes): %d\n", vm_hdr->code_size);
 	printf("Size of data (bytes): %d\n", vm_hdr->data_size);
 	printf("Size of initial data (bytes): %d\n", vm_hdr->initial_data_size);
 	printf("================================\n");
@@ -37,13 +36,16 @@ uint32_t data_size(struct esetvm2 vm)
 
 }
 
-struct esetvm2hdr* load_task(struct esetvm2 *vm)
+struct esetvm2hdr *load_task(struct esetvm2 *vm)
 {
 	struct esetvm2hdr *eset_hdr;
 	int valid;
 	
 	eset_hdr = malloc(sizeof(struct esetvm2hdr));
-	memcpy(eset_hdr, vm->memory, sizeof(struct esetvm2hdr));
+	memcpy(&eset_hdr->magic, vm->memory, 8);
+	memcpy(&eset_hdr->code_size, vm->memory+8, sizeof(uint32_t));
+	memcpy(&eset_hdr->data_size, vm->memory+12, sizeof(uint32_t));
+	memcpy(&eset_hdr->initial_data_size, vm->memory+16, sizeof(uint32_t));
 
 	valid = strcmp(eset_hdr->magic, MAGIC) && eset_hdr->data_size >= eset_hdr->initial_data_size;
 	

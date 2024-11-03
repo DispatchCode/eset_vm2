@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "esetvm2hdr.h"
+#include "esetvm2decode.h"
+
 struct esetvm2
 {
 	// VM registers
@@ -16,4 +19,6 @@ struct esetvm2
 
 struct esetvm2 get_vm_instance(FILE *fp, int memory_size);
 struct esetvm2hdr * vm_load_task(struct esetvm2 *eset_vm, FILE *fp, int memory_size);
+struct esetvm2hdr *load_task(struct esetvm2 *);
+
 #endif

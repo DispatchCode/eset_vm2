@@ -2,6 +2,8 @@
 #define ESETVM2DECODE_HEADER
 
 #include <stdint.h>
+#include "esetvm2.h"
+#include "esetvm2hdr.h"
 
 #define MOV 		0x00
 #define LOAD_CONST 	0x20
@@ -26,7 +28,7 @@
 #define LOCK		0xE0
 #define UNLOCK		0xF0
 
-uint8_t opcode_map[22] = {
+static uint8_t opcode_map[22] = {
 	MOV, LOAD_CONST, ADD, SUB, DIV, MOD, MUL, COMPARE, JUMP, 
 	JUMP_EQUAL, READ, WRITE, CONS_READ, CONS_WRITE, C_THREAD,
 	J_THREAD, HLT, SLEEP, CALL, RET, LOCK, UNLOCK	
@@ -35,12 +37,14 @@ uint8_t opcode_map[22] = {
 struct instr_info
 {
     uint8_t op_size;
-    uint8_t len;
+    uint8_t op_table_index;
+	uint8_t len;
     uint8_t nr_args;
     uint8_t addr;
     uint8_t constant;
     char *mnemonic;
-	uint8_t raw_data[9]; // instr. data, next to the OP
+	uint8_t memory_index;
+	uint32_t code_offset; // bit offset in the code
 };
 
 #define INIT_INSTR_PROP(_op_size, _len, _nr_args, _addr, _constant, _mnemonic) \
@@ -55,30 +59,30 @@ struct instr_info
  
 struct esetvm2_instruction
 {
-	uint8_t  opcode;   // Opcode
-	uint8_t  arg[3];   // Instr. arguments (0-3)   
-	uint8_t  len;      // Instruction length
-	uint32_t address;  // 32-bit address inside the code (jump to code_off)
-	uint64_t constant; // 64-bit constant (immediate value)
+	uint8_t  op_table_index; // Opcode
+	uint8_t  arg[4];  		 // Instr. arguments (0-3)   
+	uint8_t  len;     		 // Instruction length
+	uint32_t address;	 	 // 32-bit address inside the code (jump to code_off)
+	int64_t  constant;		 // 64-bit constant (immediate value)
 
-    uint32_t code_off; // Offset inside the code section
+    uint32_t code_off;		 // Offset inside the code section
 };
 
 /*
  * This table is indexed by group (first 3bits of the OP)
  * Results: index mask to use with the OP (to get the actual index)
  */
-uint8_t op_grp_table[8] = {
+static uint8_t op_grp_table[8] = {
 	0, 0, 0x1C, 0x18, 0x18, 0x18, 0x10, 0x10
 };
 
 // (op & op_grp_table[grp]) >> op_index_shift[grp]
 // get the 'index' part of the opcode
-uint8_t op_index_shift[8] = {
+static uint8_t op_index_shift[8] = {
 	0, 0, 2, 3, 3, 3, 4, 4
 };
 
-struct instr_info instr_table[22] = {
+static struct instr_info instr_table[22] = {
     INIT_INSTR_PROP(3, 13, 2, 0, 0, "mov"),
     INIT_INSTR_PROP(3, 72, 1, 0, 1, "loadConst"),
     INIT_INSTR_PROP(6, 21, 3, 0, 0, "add"),
@@ -102,5 +106,6 @@ struct instr_info instr_table[22] = {
     INIT_INSTR_PROP(4, 9, 1, 0, 0, "lock"),
     INIT_INSTR_PROP(4, 9, 1, 0, 0, "unlock")
 };
+
 
 #endif

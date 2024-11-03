@@ -2,13 +2,13 @@
 #include <malloc.h>
 #include <dirent.h>
 
-#include "esetvm2hdr.h"
 #include "esetvm2.h"
 
+extern struct esetvm2_instruction *decode(struct esetvm2hdr *hdr, struct esetvm2 *);
 
 int main() {
 	int ret = 0;
-	FILE *fp = fopen("math.evm", "rb");
+	FILE *fp = fopen("test.evm", "rb");
 	int size = file_size(fp);
 
 	struct esetvm2 eset_vm = get_vm_instance(fp, size);
@@ -22,8 +22,8 @@ int main() {
 
 	print_task_hdr(eset_vm_hdr);
 	
-	struct esetvm2_instruction *instructions = calloc(eset_vm_hdr->code_size, sizeof(struct esetvm2_instruction));
-	printf("Decoding instructions...\n");	
+	printf("\n\t[ Decoding instructions... ]\n\n");	
+	struct esetvm2_instruction *instructions = decode(eset_vm_hdr, &eset_vm);
 	
 clean:
 	if (eset_vm.memory)
