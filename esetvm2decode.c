@@ -5,23 +5,23 @@
 #include "esetvm2.h"
 #include "esetvm2decode.h"
 
-#define DEBUG_INSTR_FORMAT
+// #define DEBUG_INSTR_FORMAT
 #define DEBUG_PRINT_INSTR
 
 #ifdef DEBUG_PRINT_INSTR
 static void print_decoded_instr(struct esetvm2_instruction instr) {
 	struct instr_info info = instr_table[instr.op_table_index];
 
-	printf("%s \t", info.mnemonic);
+	printf("%3d:%10s\t", instr.code_off, info.mnemonic);
 
 	if(info.constant)
 		printf("%ld", instr.constant);
 
 	if(info.addr) {
-		// TODO print address
+		printf("%d", instr.address);
 	}	
 
-	if(info.nr_args) printf(", ");
+	if((info.constant + info.addr) && info.nr_args) printf(", ");
 
 	for(int i=0; i<info.nr_args; i++) {
 		printf("r%d%c", instr.arg[i], (i != info.nr_args-1) ? ',' : ' ');
@@ -73,11 +73,14 @@ static struct esetvm2_instruction decode_instruction(struct esetvm2 *vm, int op_
 	struct instr_info info;
 	int code_bit;
 
+	// TODO info: could be changed using an enum for ARG, CONST, ADDR
 	info = instr_table[op_map_index];
 	instr.op_table_index = op_map_index;
 
 	// TODO stored inside the VM ?
 	code_bit = CODE_OFFSET_BIT + code_offset + info.op_size;
+
+	instr.code_off = code_offset;
 
 	if (info.constant) {
 		//printf("code_offset: %d, op size: %d\n", info.code_offset, info.op_size);
@@ -86,7 +89,8 @@ static struct esetvm2_instruction decode_instruction(struct esetvm2 *vm, int op_
 	}
 
 	if(info.addr) {
-		// TODO address parsing
+		instr.address = read_const(vm, code_bit, 32);
+		code_bit += 32;
 	}
 
 	for(int i=0; i < info.nr_args; i++) {
@@ -112,18 +116,17 @@ static inline int get_op_map_index(uint8_t opcode) {
 	return i;
 }
 
-
 struct esetvm2_instruction *decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
 	// TODO use the correct CODE size
 	struct esetvm2_instruction *instructions = calloc(1000, sizeof(struct esetvm2_instruction));
 	int buff_index = CODE_OFFSET;
 	int buff_shift = 0;
 	int instr = 0;
-	int tot_instr = hdr->code_size + CODE_OFFSET;
+	int code_size = hdr->code_size;
 	int code_off = 0;
 
 	int stop_after = 0;
-	while(buff_index < tot_instr)
+	while(code_off >> 3  < code_size-1)
 	{
 		uint8_t tmp;
 		struct esetvm2_instruction instr_decoded;
@@ -174,9 +177,6 @@ struct esetvm2_instruction *decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
 
 		code_off += instr_decoded.len;
 
-		stop_after++;
-		if(stop_after == 2)
-			break;
 	}
 
 	return instructions;
