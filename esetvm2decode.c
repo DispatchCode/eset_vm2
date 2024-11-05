@@ -116,9 +116,8 @@ static inline int get_op_map_index(uint8_t opcode) {
 	return i;
 }
 
-struct esetvm2_instruction *decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
-	// TODO use the correct CODE size
-	struct esetvm2_instruction *instructions = calloc(1000, sizeof(struct esetvm2_instruction));
+struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
+	struct esetvm2_instr_decoded instr_decoded = INIT_INSTR_DECODED(10);
 	int buff_index = CODE_OFFSET;
 	int buff_shift = 0;
 	int instr = 0;
@@ -129,7 +128,7 @@ struct esetvm2_instruction *decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
 	while(code_off >> 3  < code_size-1)
 	{
 		uint8_t tmp;
-		struct esetvm2_instruction instr_decoded;
+		struct esetvm2_instruction instr;
 
 		// the opcode is inside the first byte
 		if (buff_shift < 4) {
@@ -165,19 +164,20 @@ struct esetvm2_instruction *decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
 		print_internal_rapresentation(instr_table[op_map_index]);
 #endif
 
-		instr_decoded = decode_instruction(vm, op_map_index, code_off);
+		instr = decode_instruction(vm, op_map_index, code_off);
 
 #ifdef DEBUG_PRINT_INSTR
-		print_decoded_instr(instr_decoded);
-#endif		
-		instructions[instr++] = instr_decoded;
+		print_decoded_instr(instr);
+#endif
 
-		buff_index += (instr_decoded.len >> 3);
-		buff_shift += (instr_decoded.len % 8);
+		buff_index += (instr.len >> 3);
+		buff_shift += (instr.len % 8);
 
-		code_off += instr_decoded.len;
+		code_off += instr.len;
+
+		PUSH_INSTR(instr_decoded, instr);	
 
 	}
 
-	return instructions;
+	return instr_decoded;
 }

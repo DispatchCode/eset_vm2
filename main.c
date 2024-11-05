@@ -4,7 +4,7 @@
 
 #include "esetvm2.h"
 
-extern struct esetvm2_instruction *decode(struct esetvm2hdr *hdr, struct esetvm2 *);
+extern struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *);
 
 int main() {
 	int ret = 0;
@@ -23,8 +23,8 @@ int main() {
 	print_task_hdr(eset_vm_hdr);
 	
 	printf("\n\t[ Decoding instructions... ]\n\n");	
-	struct esetvm2_instruction *instructions = decode(eset_vm_hdr, &eset_vm);
-	
+	struct esetvm2_instr_decoded decoded_instr = decode(eset_vm_hdr, &eset_vm);
+	printf("Instr decoded: %d\n", decoded_instr.tos);
 clean:
 	if (eset_vm.memory)
 		free(eset_vm.memory);

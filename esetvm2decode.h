@@ -36,27 +36,27 @@ static uint8_t opcode_map[22] = {
 
 struct instr_info
 {
-    uint8_t op_size;
-    uint8_t op_table_index;
+	uint8_t op_size;
+	uint8_t op_table_index;
 	uint8_t len;
-    uint8_t nr_args;
-    uint8_t addr;
-    uint8_t constant;
-    char *mnemonic;
+	uint8_t nr_args;
+	uint8_t addr;
+	uint8_t constant;
+	char *mnemonic;
 	uint8_t memory_index;
 	uint32_t code_offset; // bit offset in the code
 };
 
 #define INIT_INSTR_PROP(_op_size, _len, _nr_args, _addr, _constant, _mnemonic) \
-        {                                                                   \
-            .op_size   = _op_size,                                          \
-            .len       = _len,                                              \
-            .nr_args   = _nr_args,                                          \
-            .addr      = _addr,                                             \
-            .constant  = _constant,                                         \
-            .mnemonic  = _mnemonic                                          \
-        }
- 
+{                                                                   \
+	.op_size   = _op_size,                                          \
+	.len       = _len,                                              \
+	.nr_args   = _nr_args,                                          \
+	.addr      = _addr,                                             \
+	.constant  = _constant,                                         \
+	.mnemonic  = _mnemonic                                          \
+}
+
 struct esetvm2_instruction
 {
 	uint8_t  op_table_index; // Opcode
@@ -65,8 +65,31 @@ struct esetvm2_instruction
 	uint32_t address;	 	 // 32-bit address inside the code (jump to code_off)
 	int64_t  constant;		 // 64-bit constant (immediate value)
 
-    uint32_t code_off;		 // Offset inside the code section
+	uint32_t code_off;		 // Offset inside the code section
 };
+
+struct esetvm2_instr_decoded
+{
+	struct esetvm2_instruction *instructions;
+	int tos;
+	int size;
+};
+
+#define INIT_INSTR_DECODED(_size)				\
+{										\
+	.size = _size,						\
+	.tos = 0,							\
+	.instructions = calloc(_size, sizeof(struct esetvm2_instruction)) \
+}
+
+#define PUSH_INSTR(_instr, _val)				\
+{										\
+	if(_instr.size == _instr.tos) {		\
+		_instr.size *= 2;				\
+		_instr.instructions = realloc(_instr.instructions, _instr.size);	\
+	}											\
+	_instr.instructions[_instr.tos++] = _val; 	\
+};												\
 
 /*
  * This table is indexed by group (first 3bits of the OP)
@@ -83,28 +106,28 @@ static uint8_t op_index_shift[8] = {
 };
 
 static struct instr_info instr_table[22] = {
-    INIT_INSTR_PROP(3, 13, 2, 0, 0, "mov"),
-    INIT_INSTR_PROP(3, 72, 1, 0, 1, "loadConst"),
-    INIT_INSTR_PROP(6, 21, 3, 0, 0, "add"),
-    INIT_INSTR_PROP(6, 21, 3, 0, 0, "sub"),
-    INIT_INSTR_PROP(6, 21, 3, 0, 0, "div"),
-    INIT_INSTR_PROP(6, 21, 3, 0, 0, "mod"),
-    INIT_INSTR_PROP(6, 21, 3, 0, 0, "mul"),
-    INIT_INSTR_PROP(5, 20, 3, 0, 0, "compare"),
-    INIT_INSTR_PROP(5, 37, 0, 1, 0, "jump"),
-    INIT_INSTR_PROP(5, 47, 2, 1, 0, "jumpEqual"),
-    INIT_INSTR_PROP(5, 25, 4, 0, 0, "read"),
-    INIT_INSTR_PROP(5, 20, 3, 0, 0, "write"),
-    INIT_INSTR_PROP(5, 10, 1, 0, 0, "consoleRead"),
-    INIT_INSTR_PROP(5, 10, 1, 0, 0, "consoleWrite"),
-    INIT_INSTR_PROP(5, 42, 1, 1, 0, "createThread"),
-    INIT_INSTR_PROP(5, 10, 1, 0, 0, "joinThread"),
-    INIT_INSTR_PROP(5, 5, 0, 0, 0, "hlt"),
-    INIT_INSTR_PROP(5, 10, 1, 0, 0, "sleep"),
-    INIT_INSTR_PROP(4, 36, 0, 1, 0, "call"),
-    INIT_INSTR_PROP(4, 4, 0, 0, 0, "ret"),
-    INIT_INSTR_PROP(4, 9, 1, 0, 0, "lock"),
-    INIT_INSTR_PROP(4, 9, 1, 0, 0, "unlock")
+	INIT_INSTR_PROP(3, 13, 2, 0, 0, "mov"),
+	INIT_INSTR_PROP(3, 72, 1, 0, 1, "loadConst"),
+	INIT_INSTR_PROP(6, 21, 3, 0, 0, "add"),
+	INIT_INSTR_PROP(6, 21, 3, 0, 0, "sub"),
+	INIT_INSTR_PROP(6, 21, 3, 0, 0, "div"),
+	INIT_INSTR_PROP(6, 21, 3, 0, 0, "mod"),
+	INIT_INSTR_PROP(6, 21, 3, 0, 0, "mul"),
+	INIT_INSTR_PROP(5, 20, 3, 0, 0, "compare"),
+	INIT_INSTR_PROP(5, 37, 0, 1, 0, "jump"),
+	INIT_INSTR_PROP(5, 47, 2, 1, 0, "jumpEqual"),
+	INIT_INSTR_PROP(5, 25, 4, 0, 0, "read"),
+	INIT_INSTR_PROP(5, 20, 3, 0, 0, "write"),
+	INIT_INSTR_PROP(5, 10, 1, 0, 0, "consoleRead"),
+	INIT_INSTR_PROP(5, 10, 1, 0, 0, "consoleWrite"),
+	INIT_INSTR_PROP(5, 42, 1, 1, 0, "createThread"),
+	INIT_INSTR_PROP(5, 10, 1, 0, 0, "joinThread"),
+	INIT_INSTR_PROP(5, 5, 0, 0, 0, "hlt"),
+	INIT_INSTR_PROP(5, 10, 1, 0, 0, "sleep"),
+	INIT_INSTR_PROP(4, 36, 0, 1, 0, "call"),
+	INIT_INSTR_PROP(4, 4, 0, 0, 0, "ret"),
+	INIT_INSTR_PROP(4, 9, 1, 0, 0, "lock"),
+	INIT_INSTR_PROP(4, 9, 1, 0, 0, "unlock")
 };
 
 
