@@ -8,7 +8,7 @@ extern struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm
 
 int main() {
 	int ret = 0;
-	FILE *fp = fopen("test.evm", "rb");
+	FILE *fp = fopen("test_instr.evm", "rb");
 	int size = file_size(fp);
 
 	struct esetvm2 eset_vm = get_vm_instance(fp, size);

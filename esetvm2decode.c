@@ -12,7 +12,7 @@
 static void print_decoded_instr(struct esetvm2_instruction instr) {
 	struct instr_info info = instr_table[instr.op_table_index];
 
-	printf("%3d:%10s\t", instr.code_off, info.mnemonic);
+	printf("%3d:%15s\t", instr.code_off, info.mnemonic);
 
 	if(info.constant)
 		printf("%ld", instr.constant);
@@ -118,31 +118,16 @@ static inline int get_op_map_index(uint8_t opcode) {
 
 struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
 	struct esetvm2_instr_decoded instr_decoded = INIT_INSTR_DECODED(10);
-	int buff_index = CODE_OFFSET;
-	int buff_shift = 0;
 	int instr = 0;
 	int code_size = hdr->code_size;
+	int bit_code_size = (code_size * 8) - (code_size % 8);
 	int code_off = 0;
 
-	int stop_after = 0;
-	while(code_off >> 3  < code_size-1)
+	// TODO bugfix: wrong if padding is present
+	while(code_off < bit_code_size)
 	{
-		uint8_t tmp;
 		struct esetvm2_instruction instr;
-
-		// the opcode is inside the first byte
-		if (buff_shift < 4) {
-			tmp = vm->memory[buff_index] << buff_shift;
-		}
-		// OP is partially in the first byte, so we need bits from the next byte
-		else if (buff_shift < 8 && buff_shift > 3) {
-			tmp = (vm->memory[buff_index] << buff_shift) | (vm->memory[buff_index+1] >> (8 - buff_shift));
-		}
-		// remainder >=8, so we can discard the byte and take the next
-		else {
-			buff_shift %= 8;
-			tmp = vm->memory[++buff_index] << buff_shift;
-		}
+		uint8_t tmp = vm_next_op(vm);
 
 		// get the "group" from the opcode
 		uint8_t grp = (tmp & 0xE0) >> 5;
@@ -170,13 +155,11 @@ struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) 
 		print_decoded_instr(instr);
 #endif
 
-		buff_index += (instr.len >> 3);
-		buff_shift += (instr.len % 8);
+		vm_shift_ptr(vm, instr.len);
 
 		code_off += instr.len;
 
 		PUSH_INSTR(instr_decoded, instr);	
-
 	}
 
 	return instr_decoded;
