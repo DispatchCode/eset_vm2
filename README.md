@@ -1,9 +1,8 @@
-ESETVM2 Emulator
+# ESETVM2 Emulator
 
-# Description
-ESET Specifications: [Task.pdf](https://github.com/user-attachments/files/17654238/Task.pdf)
+ESET specifics: [Task.pdf](https://github.com/user-attachments/files/17654238/Task.pdf)
 
-# Features (present or not)
+### Features (present or not)
 
 ✔️ Opcode, address, constant and arguments decoding<br>
 ✔️ debug informations
@@ -12,7 +11,7 @@ ESET Specifications: [Task.pdf](https://github.com/user-attachments/files/176542
 
 🐛 code padding not detected properly (ie sometime an instruction not present will be decoded)
 
-# Examples
+## Examples
 
 ## Test Opcodes
 Text file with all the opcodes used by the VM and output of the emulator (of the decoded instructions):
