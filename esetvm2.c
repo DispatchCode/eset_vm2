@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <malloc.h>
+#include <string.h>
 
 #include "esetvm2hdr.h"
 #include "esetvm2.h"
+#include "esetvm2decode.h"
 
 #define GET_IP(_vm)	\
 	_vm->ip	\
@@ -11,14 +13,30 @@
 	++_vm->ip	\
 
 
+#ifndef ESETVM2_DISASSEMBLY
+struct esetvm2_instruction decode(struct esetvm2 *vm, int code_off);
+#endif
+
+void vm_print_internal_state(struct esetvm2 *vm)
+{
+	printf("\n\t[ ESETVM2 Internal State ]\n");
+	printf("----------------------------\n");
+	for(int i=0; i<16; i++) {
+		printf("r%-2d: %4x (%d)\t", i, vm->regs[i], vm->regs[i]);
+		if((i+1) % 4 == 0) printf("\n");
+	}
+	printf("\n----------------------------\n");
+}
+
 struct esetvm2 get_vm_instance(FILE * fp, int memory_size)
 {
 	struct esetvm2 eset_vm;
 
 	eset_vm.ip = CODE_OFFSET;
 	eset_vm.bit_shift = 0;
-	eset_vm.memory = malloc(memory_size);
+	eset_vm.memory = calloc(1, memory_size);
 	eset_vm.memory_size = memory_size;
+	memset(eset_vm.regs, 0, sizeof(eset_vm.regs));
 
 	return eset_vm;
 }
@@ -63,4 +81,60 @@ inline void vm_shift_ptr(struct esetvm2 *vm, int bits)
 inline int vm_end_of_code(struct esetvm2 *vm)
 {
 	return vm->ip < vm->memory_size;
+}
+
+#define REGS(_vm, _rindex) \
+	_vm->regs[_rindex]	\
+
+#define ARGS(_instr, _aindex)\
+	_instr.arg[_aindex]
+
+static void vm_execute(struct esetvm2 *vm, struct esetvm2_instruction instr)
+{
+	struct instr_info info;
+
+	// Useful information that help decoding the instr.
+	info = instr_table[instr.op_table_index];
+ 
+	switch(instr.op_table_index) {
+		 case 0:
+		// TODO mov
+		break;
+		case 1: // loadConst
+			REGS(vm, ARGS(instr, 0)) = instr.constant;
+			printf("REG VALUE: %d, index_arg: %d\n", REGS(vm, ARGS(instr, 0)), ARGS(instr, 0));
+		break;
+		case 2: // add
+			REGS(vm, ARGS(instr, 2)) = REGS(vm, ARGS(instr, 1)) + REGS(vm, ARGS(instr, 0));
+		break;
+	}
+
+	
+}
+
+void execute(struct esetvm2 *vm)
+{
+	int code_off = 0;
+
+	int instr_cnt = 3;
+	while(1)
+	{
+		struct esetvm2_instruction instr = decode(vm, code_off);
+		code_off += instr.len;
+
+		vm_execute(vm, instr);
+		
+		//if(!instr.address)
+			vm_shift_ptr(vm, instr.len);
+		// TODO don't call the same function: dont sum but assign
+		
+		#ifdef VM_PRINT_STATE
+			vm_print_internal_state(vm);
+		#endif
+
+		instr_cnt--;
+		if(!instr_cnt)
+			break;
+	}
+
 }

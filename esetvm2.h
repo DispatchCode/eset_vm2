@@ -7,6 +7,10 @@
 #include "esetvm2hdr.h"
 #include "esetvm2decode.h"
 
+
+// #define ESETVM2_DISASSEMBLY
+#define VM_PRINT_STATE
+
 struct esetvm2
 {
 	// VM registers
@@ -31,5 +35,6 @@ uint8_t vm_next_op(struct esetvm2 *);
 void vm_mem_wu8(struct esetvm2 *, uint8_t val);
 void vm_shift_ptr(struct esetvm2 *vm, int bits);
 int vm_end_of_code(struct esetvm2 *vm);
+void execute(struct esetvm2 *vm);
 
 #endif

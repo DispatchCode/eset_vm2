@@ -10,6 +10,8 @@
 
 #ifdef DEBUG_PRINT_INSTR
 static void print_decoded_instr(struct esetvm2_instruction instr) {
+	printf("\n\t[ Decoding instructions... ]\n\n");
+
 	struct instr_info info = instr_table[instr.op_table_index];
 
 	printf("%3d:%15s\t", instr.code_off, info.mnemonic);
@@ -116,6 +118,7 @@ static inline int get_op_map_index(uint8_t opcode) {
 	return i;
 }
 
+#ifdef ESETVM2_DISASSEMBLY
 struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
 	struct esetvm2_instr_decoded instr_decoded = INIT_INSTR_DECODED(10);
 	int instr = 0;
@@ -164,3 +167,26 @@ struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) 
 
 	return instr_decoded;
 }
+#else /* !ESETVM2_DISASSEMBLY */
+struct esetvm2_instruction decode(struct esetvm2 *vm, int code_off)
+{
+	struct esetvm2_instruction instr;
+
+	uint8_t tmp_op = vm_next_op(vm);
+	uint8_t grp = (tmp_op & 0xE0) >> 5;
+	uint8_t grp_mask = op_grp_table[grp];
+	uint8_t grp_index = (tmp_op & grp_mask) >> op_index_shift[grp];
+	uint8_t op = (grp << 5) | (grp_index << op_index_shift[grp]);
+
+	int op_map_index = get_op_map_index(op);
+	printf("op_map_index: %d\n", op_map_index);
+	instr = decode_instruction(vm, op_map_index, code_off);
+
+#ifdef DEBUG_PRINT_INSTR
+	print_decoded_instr(instr);
+#endif
+
+	return instr;
+}
+
+#endif

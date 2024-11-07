@@ -130,5 +130,4 @@ static struct instr_info instr_table[22] = {
 	INIT_INSTR_PROP(4, 9, 1, 0, 0, "unlock")
 };
 
-
 #endif
