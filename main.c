@@ -8,13 +8,20 @@
 extern struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *);
 #endif
 
+extern uint8_t *memory;
 
 int main() {
 	int ret = 0;
-	FILE *fp = fopen("samples/precompiled/math.evm", "rb");
-	int size = file_size(fp);
+	FILE *fp = fopen("samples/precompiled/math2.evm", "rb");
+	
+	if(!fp) {
+		printf(".evm file not found, abort.\n");
+		return -1;
+	}
 
+	int size = file_size(fp);
 	struct esetvm2 eset_vm = get_vm_instance(fp, size);
+	
 	struct esetvm2hdr *eset_vm_hdr = vm_load_task(&eset_vm, fp, size);
 
 	if (!eset_vm_hdr) {
@@ -30,13 +37,13 @@ int main() {
 
 #else
 
-	execute(&eset_vm);
+	vm_start(&eset_vm);
 
 #endif
 
 clean:
-	if (eset_vm.memory)
-		free(eset_vm.memory);
+	if (memory)
+		free(memory);
 
 	return ret;
 }

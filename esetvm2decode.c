@@ -7,6 +7,8 @@
 #include "common.h"
 
 
+extern uint8_t *memory;
+
 #ifdef DEBUG_PRINT_INSTR
 static void print_decoded_instr(struct esetvm2_instruction instr) {
 	struct instr_info info = instr_table[instr.op_table_index];
@@ -51,7 +53,7 @@ static void print_internal_rapresentation(struct instr_info info) {
 }
 #endif
 
-static struct esetvm2_instruction decode_instruction(struct esetvm2 *vm, int op_map_index) {
+static struct esetvm2_instruction decode_instruction(struct vm_thread *vm_th, int op_map_index) {
 	struct esetvm2_instruction instr;
 	struct instr_info info;
 	int code_bit;
@@ -61,23 +63,23 @@ static struct esetvm2_instruction decode_instruction(struct esetvm2 *vm, int op_
 	instr.op_table_index = op_map_index;
 
 	// TODO stored inside the VM ?
-	code_bit = vm->ip + info.op_size;
+	code_bit = vm_th->ip + info.op_size;
 
 	if (info.constant) {
 		//printf("code_offset: %d, op size: %d\n", info.code_offset, info.op_size);
-		instr.constant = read_const(vm, code_bit, 64);
+		instr.constant = read_const(code_bit, 64);
 		code_bit += 64;
 	}
 
 	if(info.addr) {
-		instr.address = read_const(vm, code_bit, 32);
+		instr.address = read_const(code_bit, 32);
 		code_bit += 32;
 	}
 
 	for(int i=0; i < info.nr_args; i++) {
-		switch(get_bit_at(vm, code_bit)) {
+		switch(get_bit_at(code_bit)) {
 			case 0:
-				instr.arg[i] = read_const(vm, code_bit+1, 4);
+				instr.arg[i] = read_const(code_bit+1, 4);
 				code_bit += 5;
 				break;	
 			case 1:
@@ -98,7 +100,7 @@ static inline int get_op_map_index(uint8_t opcode) {
 }
 
 #ifdef ESETVM2_DISASSEMBLY
-struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) {
+struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct vm_thread *vm_th) {
 	struct esetvm2_instr_decoded instr_decoded = INIT_INSTR_DECODED(10);
 	int instr = 0;
 	int code_size = hdr->code_size;
@@ -108,7 +110,7 @@ struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) 
 	while(vm->ip < bit_code_size)
 	{
 		struct esetvm2_instruction instr;
-		uint8_t op = vm_next_op(vm);
+		uint8_t op = vm_next_op(vm_th);
 		
 		int op_map_index = get_op_map_index(op);
 		// TODO check out of bounds
@@ -117,14 +119,14 @@ struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) 
 		print_internal_rapresentation(instr_table[op_map_index]);
 #endif
 
-		instr = decode_instruction(vm, op_map_index);
+		instr = decode_instruction(vm_th, op_map_index);
 
 #ifdef DEBUG_PRINT_INSTR
-		instr.code_off = vm->ip - CODE_OFFSET_BIT;
+		instr.code_off = vm_th->ip - CODE_OFFSET_BIT;
 		print_decoded_instr(instr);
 #endif
 
-		vm_shift_ptr(vm, instr.len);
+		vm_shift_ptr(vm_th, instr.len);
 
 		PUSH_INSTR(instr_decoded, instr);	
 	}
@@ -132,14 +134,14 @@ struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *vm) 
 	return instr_decoded;
 }
 #else /* !ESETVM2_DISASSEMBLY */
-struct esetvm2_instruction decode(struct esetvm2 *vm)
+struct esetvm2_instruction decode(struct vm_thread *vm_th)
 {
 	struct esetvm2_instruction instr;
 
-	uint8_t op = vm_next_op(vm);
+	uint8_t op = vm_next_op(vm_th);
 
 	int op_map_index = get_op_map_index(op);
-	instr = decode_instruction(vm, op_map_index);
+	instr = decode_instruction(vm_th, op_map_index);
 
 #ifdef DEBUG_PRINT_INSTR
 	print_decoded_instr(instr);
