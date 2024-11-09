@@ -64,8 +64,9 @@ struct esetvm2_instruction
 	uint8_t  len;     		 // Instruction length
 	uint32_t address;	 	 // 32-bit address inside the code (jump to code_off)
 	int64_t  constant;		 // 64-bit constant (immediate value)
-
-	uint32_t code_off;		 // Offset inside the code section
+#ifdef DEBUG_PRINT_INSTR
+	uint32_t code_off;
+#endif
 };
 
 struct esetvm2_instr_decoded

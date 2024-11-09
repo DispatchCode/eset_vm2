@@ -4,12 +4,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "config.h"
+
 #include "esetvm2hdr.h"
 #include "esetvm2decode.h"
 
-
-// #define ESETVM2_DISASSEMBLY
-#define VM_PRINT_STATE
 
 struct esetvm2
 {
@@ -23,6 +22,8 @@ struct esetvm2
 	int bit_shift;
 
 	int memory_size;
+	
+	int thread_count;
 };
 
 struct esetvm2 get_vm_instance(FILE *fp, int memory_size);
@@ -33,7 +34,7 @@ struct esetvm2hdr *load_task(struct esetvm2 *);
 uint8_t vm_mem_ru8(struct esetvm2 *);
 uint8_t vm_next_op(struct esetvm2 *);
 void vm_mem_wu8(struct esetvm2 *, uint8_t val);
-void vm_shift_ptr(struct esetvm2 *vm, int bits);
+void vm_shift_ptr(struct esetvm2 *vm, uint8_t bits);
 int vm_end_of_code(struct esetvm2 *vm);
 void execute(struct esetvm2 *vm);
 

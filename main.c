@@ -24,7 +24,7 @@ int main() {
 	}
 
 	print_task_hdr(eset_vm_hdr);
-#ifdef ESETVM2_DISASSEMBLY	
+#ifdef ESETVM2_DISASSEMBLY
 	struct esetvm2_instr_decoded decoded_instr = decode(eset_vm_hdr, &eset_vm);
 	printf("Instr decoded: %d\n", decoded_instr.tos);
 
