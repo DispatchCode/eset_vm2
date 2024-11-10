@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <pthread.h>
 
 #include "config.h"
 
@@ -25,14 +26,23 @@ struct vm_thread
 	// thread stack
 	uint8_t *call_stack;
 
+	// TODO mutex lock 'active'
+	// TODO cond 'active'
 };
 
 struct esetvm2
 {
+	// nr of threads
 	int thread_count;
-	// thread_count is the actual nr of elements
+	// vm thread: registers and stack
 	struct vm_thread *thread_state;
-
+	// real thread
+	pthread_t *threads;
+	
+	uint8_t *memory;
+	int memory_size;
+	
+	// "data" size buffer (memory used by the program)
 	uint8_t *data;
 };
 

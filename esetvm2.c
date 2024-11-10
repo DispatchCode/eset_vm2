@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <string.h>
-#include <pthread.h>
 #include <unistd.h>
 
 #include "esetvm2hdr.h"
@@ -11,10 +10,7 @@
 
 
 static int th_cnt = 0;
- pthread_t *threads;
 
-uint8_t *memory;
-int memory_size;
 struct esetvm2 *vm;
 
 #define GET_IP(_vm)	\
@@ -42,19 +38,21 @@ void vm_print_internal_state(struct vm_thread *vm_th)
 void init_vm_instance(FILE * fp, int file_size)
 {
 	vm = calloc(1, sizeof(struct esetvm2));
-	memory = calloc(1, file_size);
-	memory_size = file_size;
+	vm->memory = calloc(1, file_size);
+	vm->memory_size = file_size;
 
 	vm->thread_count = 1;	
 	vm->thread_state = calloc(10, sizeof(struct vm_thread));
 	vm->thread_state[0].ip = CODE_OFFSET_BIT;
+	
+	vm->threads = calloc(10, sizeof(pthread_t));
 }
 
 struct esetvm2hdr * vm_load_task(FILE *fp, int memory_size)
 {
 	struct esetvm2hdr *vm_hdr;	
 
-	fread(memory, sizeof(uint8_t), memory_size, fp);
+	fread(vm->memory, sizeof(uint8_t), memory_size, fp);
 	vm_hdr = load_task();	
 
 	vm->data = calloc(vm_hdr->data_size, sizeof(uint8_t));
@@ -64,7 +62,7 @@ struct esetvm2hdr * vm_load_task(FILE *fp, int memory_size)
 
 static inline uint8_t vm_mem_ru8n(struct vm_thread *vm_th, int bytes)
 {
-	return memory[GET_IP(vm_th) + bytes];
+	return vm->memory[GET_IP(vm_th) + bytes];
 }
 
 inline uint8_t vm_mem_ru8(struct vm_thread *vm_th)
@@ -102,7 +100,7 @@ inline void vm_shift_ptr(struct vm_thread *vm_th, uint8_t bits)
 
 inline int vm_end_of_code(struct vm_thread *vm_th)
 {
-	return vm_th->ip < memory_size;
+	return vm_th->ip < vm->memory_size;
 }
 
 // TODO handle reg / mem operation checking reg_or_mem[]
@@ -247,20 +245,19 @@ void vm_setup_new_thread(struct vm_thread *vm_th, struct esetvm2_instruction ins
 
 	//threads = realloc(threads, (thread_count+1)*sizeof(pthread_t));
 
-	pthread_create(&threads[thread_count], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[thread_count]);
-	pthread_detach(threads[thread_count]);
+	pthread_create(&vm->threads[thread_count], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[thread_count]);
+	pthread_detach(vm->threads[thread_count]);
 	vm->thread_count++;
 }
 
 void vm_start()
 {
 	// initial thread
-	threads = calloc(10, sizeof(pthread_t));
 	vm->thread_state[0].index  = 0;
 	vm->thread_state[0].active = 1;
 	
-	pthread_create(&threads[0], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[0]);
-	pthread_detach(threads[0]);
+	pthread_create(&vm->threads[0], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[0]);
+	pthread_detach(vm->threads[0]);
 
 	while(vm->thread_state[0].active) sleep(0.1);
 

@@ -8,9 +8,7 @@
 extern struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr);
 #endif
 
-extern uint8_t *memory;
 extern struct esetvm2 *vm;
-
 
 int main() {
 	int ret = 0;
@@ -44,8 +42,8 @@ int main() {
 #endif
 
 clean:
-	if (memory)
-		free(memory);
+	if (vm->memory)
+		free(vm->memory);
 
 	return ret;
 }

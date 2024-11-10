@@ -7,8 +7,6 @@
 #include "common.h"
 
 
-extern uint8_t *memory;
-
 #ifdef DEBUG_PRINT_INSTR
 static void print_decoded_instr(struct esetvm2_instruction instr) {
 	struct instr_info info = instr_table[instr.op_table_index];

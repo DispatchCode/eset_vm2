@@ -4,8 +4,6 @@
 
 #include "esetvm2.h"
 
-extern uint8_t *memory;
-extern int memory_size;
 extern struct esetvm2 *vm;
 
 void print_task_hdr(struct esetvm2hdr * vm_hdr)
@@ -46,10 +44,10 @@ struct esetvm2hdr *load_task()
 	int valid;
 
 	eset_hdr = malloc(sizeof(struct esetvm2hdr));
-	memcpy(&eset_hdr->magic, memory, 8);
-	memcpy(&eset_hdr->code_size, memory+8, sizeof(uint32_t));
-	memcpy(&eset_hdr->data_size, memory+12, sizeof(uint32_t));
-	memcpy(&eset_hdr->initial_data_size, memory+16, sizeof(uint32_t));
+	memcpy(&eset_hdr->magic, vm->memory, 8);
+	memcpy(&eset_hdr->code_size, vm->memory+8, sizeof(uint32_t));
+	memcpy(&eset_hdr->data_size, vm->memory+12, sizeof(uint32_t));
+	memcpy(&eset_hdr->initial_data_size, vm->memory+16, sizeof(uint32_t));
 
 	valid = strcmp(eset_hdr->magic, MAGIC) && eset_hdr->data_size >= eset_hdr->initial_data_size;
 	
