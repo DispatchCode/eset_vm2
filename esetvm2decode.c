@@ -72,6 +72,7 @@ static struct esetvm2_instruction decode_instruction(struct vm_thread *vm_th, in
 		//printf("code_offset: %d, op size: %d\n", info.code_offset, info.op_size);
 		instr.constant = read_const(code_bit, 64);
 		code_bit += 64;
+		//printf("constant %x\n", instr.constant);
 	}
 	
 	if(info.addr) {
@@ -95,8 +96,11 @@ static struct esetvm2_instruction decode_instruction(struct vm_thread *vm_th, in
 		}
 	}
 
-	printf("Code bit: %d\n", code_bit - vm_th->ip );
+	//printf("Code bit: %d\n", code_bit - vm_th->ip );
 	instr.len = code_bit - vm_th->ip;
+#ifdef DEBUG_PRINT_INSTR
+	instr.code_off = vm_th->ip - CODE_OFFSET_BIT;
+#endif
 
 	return instr;
 }

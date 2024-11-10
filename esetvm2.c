@@ -30,10 +30,10 @@ struct esetvm2_instruction decode(struct vm_thread *vm_th);
 
 void vm_print_internal_state(struct vm_thread *vm_th)
 {
-	printf("\n\t[ ESETVM2 Internal State ]\n");
+	printf("\n\t[ ESETVM2 Internal State (Thread: %d) ]\n", vm_th->index);
 	printf("----------------------------\n");
 	for(int i=0; i<16; i++) {
-		printf("r%-2d: %4x (%d)\t", i, vm_th->regs[i], vm_th->regs[i]);
+		printf("r%-2d: %4lx (%d)\t", i, vm_th->regs[i], vm_th->regs[i]);
 		if((i+1) % 4 == 0) printf("\n");
 	}
 	printf("\n----------------------------\n");
@@ -46,7 +46,7 @@ void init_vm_instance(FILE * fp, int file_size)
 	memory_size = file_size;
 
 	vm->thread_count = 1;	
-	vm->thread_state = calloc(1, sizeof(struct vm_thread));
+	vm->thread_state = calloc(10, sizeof(struct vm_thread));
 	vm->thread_state[0].ip = CODE_OFFSET_BIT;
 }
 
@@ -118,19 +118,23 @@ inline int vm_end_of_code(struct vm_thread *vm_th)
 
 static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 {
-	printf("vm_execute, thread: %d ", vm_th->index);
+	//printf("vm_execute, thread: %d ", vm_th->index);
 	struct instr_info info;
 
 	// Useful information that help decoding the instr.
 	info = instr_table[instr.op_table_index];
- 	printf("%s\n", info.mnemonic);
+ 	//printf("%s\n", info.mnemonic);
 	//printf("INSTR_TABLE_INDEX: %d\n", instr.op_table_index);
 	
 	switch(instr.op_table_index) {
 		case 0: // mov
-			uint8_t mem_index = REGS(vm_th, ARGS(instr, 1));
+			uint64_t mem_index = REGS(vm_th, ARGS(instr, 1));
+			//printf("mem_index, mov: %d ", mem_index);
+ 
 			uint64_t val = REGS(vm_th, ARGS(instr,0));
-			memcpy(&vm->data+mem_index, &val, instr.reg_or_mem[0]);
+			//printf("mov, val: %d, byte to move: %d\n", val, instr.reg_or_mem[1]);
+			
+			memcpy(&vm->data[mem_index], &val, instr.reg_or_mem[1]);
 		break;
 		case 1: // loadConst
 			REGS(vm_th, ARGS(instr, 0)) = instr.constant;
@@ -172,9 +176,9 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 			if(instr.ss[0]) {
 				uint64_t val;
 				memcpy(&val, &vm->data[REGS(vm_th, ARGS(instr,0))], instr.reg_or_mem[0]);
-				printf("%016x\n", val);
+				printf("%016lx\n", val);
 			} else
-				printf("%016x\n", REGS(vm_th, ARGS(instr, 0)));
+				printf("%016lx\n", REGS(vm_th, ARGS(instr, 0)));
 		};
 		break;
 		case 14: // createThread
@@ -185,8 +189,10 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 			vm_wait(vm_th, instr);
 		break;
 		case 16: // hlt
-			printf("hlt thread: %d\n", vm_th->index);
-			vm_th->active = 0;						
+			//printf("hlt thread: %d\n", vm_th->index);
+			vm_th->active = 0;
+			vm_print_internal_state(vm_th);
+			//printf("DATA from thread %d: %x\n", vm_th->index, vm->data[0]); 						
 		break;
 	}
 }
@@ -195,7 +201,7 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 
 void *vm_thread_run(struct vm_thread *vm_th)
 {
-	printf("vm_thread_run, thread: %d\n", vm_th->index);
+	//printf("vm_thread_run, thread: %d\n", vm_th->index);
 	while(vm_th->active)
 	{
 		struct esetvm2_instruction instr = decode(vm_th);
@@ -212,7 +218,7 @@ void *vm_thread_run(struct vm_thread *vm_th)
 		#endif
 		
 		// let other threads run
-		sleep(1);
+		sleep(0.1);
 	}
 }
 
@@ -229,33 +235,34 @@ void vm_setup_new_thread(struct vm_thread *vm_th, struct esetvm2_instruction ins
 	// TODO protect with mutex thread_count
 	int thread_count = vm->thread_count;
 
-	printf("setup new thread (thread_count: %d)\n", thread_count);
+	//printf("setup new thread (thread_count: %d)\n", thread_count);
 	
 	REGS(vm_th, ARGS(instr, 0)) = thread_count;
 
-	vm->thread_state = realloc(vm->thread_state, (1+thread_count)*sizeof(struct vm_thread));
+	//vm->thread_state = realloc(vm->thread_state, (1+thread_count)*sizeof(struct vm_thread));
 	vm->thread_state[thread_count].index = thread_count;
 	vm->thread_state[thread_count].active = 1;
 	vm->thread_state[thread_count].ip = address + CODE_OFFSET_BIT;
-	//memcpy(&vm->thread_state[thread_count].regs, &vm->thread_state[vm_th->index].regs, 16*(sizeof(int64_t)));	
+	memcpy(&vm->thread_state[thread_count].regs, &vm_th->regs, 16*(sizeof(int64_t)));	
 
-	threads = realloc(threads, (thread_count+1)*sizeof(pthread_t));
+	//threads = realloc(threads, (thread_count+1)*sizeof(pthread_t));
 
 	pthread_create(&threads[thread_count], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[thread_count]);
-	
+	pthread_detach(threads[thread_count]);
 	vm->thread_count++;
 }
 
 void vm_start()
 {
 	// initial thread
-	threads = calloc(1, sizeof(pthread_t));
+	threads = calloc(10, sizeof(pthread_t));
 	vm->thread_state[0].index  = 0;
 	vm->thread_state[0].active = 1;
 	
 	pthread_create(&threads[0], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[0]);
+	pthread_detach(threads[0]);
 
-	pthread_join(threads[0], NULL);
+	while(vm->thread_state[0].active) sleep(0.1);
 
 }
 #endif
