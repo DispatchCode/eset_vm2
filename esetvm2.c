@@ -2,6 +2,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "esetvm2hdr.h"
 #include "esetvm2.h"
@@ -14,6 +15,7 @@ static int th_cnt = 0;
 
 uint8_t *memory;
 int memory_size;
+struct esetvm2 *vm;
 
 #define GET_IP(_vm)	\
 	_vm->ip	\
@@ -37,24 +39,27 @@ void vm_print_internal_state(struct vm_thread *vm_th)
 	printf("\n----------------------------\n");
 }
 
-struct esetvm2 get_vm_instance(FILE * fp, int file_size)
+void init_vm_instance(FILE * fp, int file_size)
 {
-	struct esetvm2 eset_vm;
-	
+	vm = calloc(1, sizeof(struct esetvm2));
 	memory = calloc(1, file_size);
 	memory_size = file_size;
-	eset_vm.thread_count = 1;	
-	eset_vm.thread_state = calloc(1, sizeof(struct vm_thread));
-	eset_vm.thread_state[0].ip = CODE_OFFSET_BIT;
 
-	return eset_vm;
+	vm->thread_count = 1;	
+	vm->thread_state = calloc(1, sizeof(struct vm_thread));
+	vm->thread_state[0].ip = CODE_OFFSET_BIT;
 }
 
-struct esetvm2hdr * vm_load_task(struct esetvm2 *eset_vm, FILE *fp, int memory_size)
+struct esetvm2hdr * vm_load_task(FILE *fp, int memory_size)
 {
-	fread(memory, sizeof(uint8_t), memory_size, fp);
+	struct esetvm2hdr *vm_hdr;	
 
-	return load_task(eset_vm);
+	fread(memory, sizeof(uint8_t), memory_size, fp);
+	vm_hdr = load_task();	
+
+	vm->data = calloc(vm_hdr->data_size, sizeof(uint8_t));
+
+	return vm_hdr;
 }
 
 static inline uint8_t vm_mem_ru8n(struct vm_thread *vm_th, int bytes)
@@ -100,27 +105,32 @@ inline int vm_end_of_code(struct vm_thread *vm_th)
 	return vm_th->ip < memory_size;
 }
 
+// TODO handle reg / mem operation checking reg_or_mem[]
 #define REGS(_vm, _rindex) \
 	_vm->regs[_rindex]	\
 
 #define ARGS(_instr, _aindex)\
 	_instr.arg[_aindex]
 
+// TODO support also memory operations 
 #define MATH_OP(_vm, _instr, _sign)	\
 	REGS(_vm, ARGS(_instr, 2)) = REGS(_vm, ARGS(_instr, 0)) _sign REGS(_vm, ARGS(_instr, 1))
 
 static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 {
+	printf("vm_execute, thread: %d ", vm_th->index);
 	struct instr_info info;
 
 	// Useful information that help decoding the instr.
 	info = instr_table[instr.op_table_index];
- 
+ 	printf("%s\n", info.mnemonic);
 	//printf("INSTR_TABLE_INDEX: %d\n", instr.op_table_index);
 	
 	switch(instr.op_table_index) {
-		 case 0:
-		// TODO mov
+		case 0: // mov
+			uint8_t mem_index = REGS(vm_th, ARGS(instr, 1));
+			uint64_t val = REGS(vm_th, ARGS(instr,0));
+			memcpy(&vm->data+mem_index, &val, instr.reg_or_mem[0]);
 		break;
 		case 1: // loadConst
 			REGS(vm_th, ARGS(instr, 0)) = instr.constant;
@@ -158,22 +168,34 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		case 12: // consoleRead
 		break;
 		case 13: // consoleWrite
-			printf("%016x\n", REGS(vm_th, ARGS(instr, 0)));
+		{
+			if(instr.ss[0]) {
+				uint64_t val;
+				memcpy(&val, &vm->data[REGS(vm_th, ARGS(instr,0))], instr.reg_or_mem[0]);
+				printf("%016x\n", val);
+			} else
+				printf("%016x\n", REGS(vm_th, ARGS(instr, 0)));
+		};
 		break;
 		case 14: // createThread
+			uint32_t address = instr.address;
+			vm_setup_new_thread(vm_th, instr, address);	
 		break;
 		case 15: // joinThread
+			vm_wait(vm_th, instr);
 		break;
 		case 16: // hlt
+			printf("hlt thread: %d\n", vm_th->index);
 			vm_th->active = 0;						
 		break;
 	}
-
-	
 }
+
+#ifndef ESETVM2_DISASSEMBLY
 
 void *vm_thread_run(struct vm_thread *vm_th)
 {
+	printf("vm_thread_run, thread: %d\n", vm_th->index);
 	while(vm_th->active)
 	{
 		struct esetvm2_instruction instr = decode(vm_th);
@@ -188,16 +210,43 @@ void *vm_thread_run(struct vm_thread *vm_th)
 		#ifdef VM_PRINT_STATE
 			vm_print_internal_state(vm_th);
 		#endif
+		
+		// let other threads run
+		sleep(1);
 	}
 }
 
-void vm_setup_new_thread(struct esetvm2 *vm, int thread_nr, uint32_t address) {
-// TODO copy registers from actual thread
-// set IP to the "address" 
+void vm_wait(struct vm_thread *vm_th, struct esetvm2_instruction instr)
+{
+	int th_index = REGS(vm_th, ARGS(instr, 0));
+	// TODO use pthread_cond in order to wait
+	while(vm->thread_state[th_index].active) {
+		sleep(1);
+	}
+} 
+
+void vm_setup_new_thread(struct vm_thread *vm_th, struct esetvm2_instruction instr, uint32_t address) {
+	// TODO protect with mutex thread_count
+	int thread_count = vm->thread_count;
+
+	printf("setup new thread (thread_count: %d)\n", thread_count);
+	
+	REGS(vm_th, ARGS(instr, 0)) = thread_count;
+
+	vm->thread_state = realloc(vm->thread_state, (1+thread_count)*sizeof(struct vm_thread));
+	vm->thread_state[thread_count].index = thread_count;
+	vm->thread_state[thread_count].active = 1;
+	vm->thread_state[thread_count].ip = address + CODE_OFFSET_BIT;
+	//memcpy(&vm->thread_state[thread_count].regs, &vm->thread_state[vm_th->index].regs, 16*(sizeof(int64_t)));	
+
+	threads = realloc(threads, (thread_count+1)*sizeof(pthread_t));
+
+	pthread_create(&threads[thread_count], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[thread_count]);
+	
+	vm->thread_count++;
 }
 
-#ifndef ESETVM2_DISASSEMBLY
-void vm_start(struct esetvm2 *vm)
+void vm_start()
 {
 	// initial thread
 	threads = calloc(1, sizeof(pthread_t));

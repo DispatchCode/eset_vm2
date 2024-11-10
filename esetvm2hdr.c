@@ -6,6 +6,7 @@
 
 extern uint8_t *memory;
 extern int memory_size;
+extern struct esetvm2 *vm;
 
 void print_task_hdr(struct esetvm2hdr * vm_hdr)
 {
@@ -29,17 +30,17 @@ int file_size(FILE *fp)
 	return size;
 }
 
-uint32_t code_size(struct esetvm2 vm)
+uint32_t code_size()
 {
 
 }
 
-uint32_t data_size(struct esetvm2 vm)
+uint32_t data_size()
 {
 
 }
 
-struct esetvm2hdr *load_task(struct esetvm2 *vm)
+struct esetvm2hdr *load_task()
 {
 	struct esetvm2hdr *eset_hdr;
 	int valid;

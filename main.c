@@ -5,14 +5,16 @@
 #include "esetvm2.h"
 
 #ifdef ESETVM2_DISASSEMBLY
-extern struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct esetvm2 *);
+extern struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr);
 #endif
 
 extern uint8_t *memory;
+extern struct esetvm2 *vm;
+
 
 int main() {
 	int ret = 0;
-	FILE *fp = fopen("samples/precompiled/math2.evm", "rb");
+	FILE *fp = fopen("samples/precompiled/threadingBase.evm", "rb");
 	
 	if(!fp) {
 		printf(".evm file not found, abort.\n");
@@ -20,9 +22,9 @@ int main() {
 	}
 
 	int size = file_size(fp);
-	struct esetvm2 eset_vm = get_vm_instance(fp, size);
+	init_vm_instance(fp, size);
 	
-	struct esetvm2hdr *eset_vm_hdr = vm_load_task(&eset_vm, fp, size);
+	struct esetvm2hdr *eset_vm_hdr = vm_load_task(fp, size);
 
 	if (!eset_vm_hdr) {
 		printf("Invalid task header\n");
@@ -32,12 +34,12 @@ int main() {
 
 	print_task_hdr(eset_vm_hdr);
 #ifdef ESETVM2_DISASSEMBLY
-	struct esetvm2_instr_decoded decoded_instr = decode(eset_vm_hdr, &eset_vm);
+	struct esetvm2_instr_decoded decoded_instr = decode(eset_vm_hdr);
 	printf("Instr decoded: %d\n", decoded_instr.tos);
 
 #else
 
-	vm_start(&eset_vm);
+	vm_start();
 
 #endif
 

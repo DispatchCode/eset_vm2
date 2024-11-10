@@ -25,7 +25,10 @@ static void print_decoded_instr(struct esetvm2_instruction instr) {
 	if((info.constant + info.addr) && info.nr_args) printf(", ");
 
 	for(int i=0; i<info.nr_args; i++) {
-		printf("r%d%c", instr.arg[i], (i != info.nr_args-1) ? ',' : ' ');
+		if(instr.ss[i])
+			printf("%d[r%d]%c", instr.reg_or_mem[i], instr.arg[i], (i != info.nr_args-1) ? ',' : ' ');
+		else
+			printf("r%d%c", instr.arg[i], (i != info.nr_args-1) ? ',' : ' ');
 	}
 
 	printf("\n");
@@ -70,25 +73,30 @@ static struct esetvm2_instruction decode_instruction(struct vm_thread *vm_th, in
 		instr.constant = read_const(code_bit, 64);
 		code_bit += 64;
 	}
-
+	
 	if(info.addr) {
 		instr.address = read_const(code_bit, 32);
 		code_bit += 32;
 	}
-
+	
 	for(int i=0; i < info.nr_args; i++) {
 		switch(get_bit_at(code_bit)) {
 			case 0:
 				instr.arg[i] = read_const(code_bit+1, 4);
 				code_bit += 5;
+				instr.ss[i] = 0;
 				break;	
 			case 1:
-				// TODO argx, ss, xxxx
+				instr.reg_or_mem[i] = type[read_const(code_bit+1,2)];
+				instr.arg[i] = read_const(code_bit+3, 4);
+				instr.ss[i] = 1;
+				code_bit += 7;
 				break;
 		}
 	}
 
-	instr.len = info.len;
+	printf("Code bit: %d\n", code_bit - vm_th->ip );
+	instr.len = code_bit - vm_th->ip;
 
 	return instr;
 }
@@ -100,14 +108,22 @@ static inline int get_op_map_index(uint8_t opcode) {
 }
 
 #ifdef ESETVM2_DISASSEMBLY
-struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr, struct vm_thread *vm_th) {
+extern struct esetvm2 *vm;
+
+struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr) {
 	struct esetvm2_instr_decoded instr_decoded = INIT_INSTR_DECODED(10);
 	int instr = 0;
 	int code_size = hdr->code_size;
 	int bit_code_size = CODE_OFFSET_BIT + (code_size * 8) - (code_size % 8);
 
+	// faking a thread
+	vm->thread_state = realloc(vm->thread_state, 1*sizeof(struct vm_thread));
+
+	struct vm_thread *vm_th = &vm->thread_state[0];
+	vm_th->ip = CODE_OFFSET_BIT;
+
 	// TODO bugfix: wrong if padding is present
-	while(vm->ip < bit_code_size)
+	while(vm_th->ip < bit_code_size)
 	{
 		struct esetvm2_instruction instr;
 		uint8_t op = vm_next_op(vm_th);
