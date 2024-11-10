@@ -225,9 +225,9 @@ void *vm_thread_run(struct vm_thread *vm_th)
 void vm_wait(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 {
 	int th_index = REGS(vm_th, ARGS(instr, 0));
-	// TODO use pthread_cond in order to wait
+	// TODO use pthread_cond
 	while(vm->thread_state[th_index].active) {
-		sleep(1);
+		sleep(0.1);
 	}
 } 
 
