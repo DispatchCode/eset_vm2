@@ -9,9 +9,7 @@
 
 /* Enable disassembly mode (no exec)*/
 
-#ifdef DEBUG_PRINT_INSTR
-	#define ESETVM2_DISASSEMBLY
-#endif
+//#define ESETVM2_DISASSEMBLY
 
 /* Print CPU registers content */
 //#define VM_PRINT_STATE
