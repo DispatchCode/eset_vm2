@@ -9,8 +9,6 @@
 #include "common.h"
 
 
-static int th_cnt = 0;
-
 struct esetvm2 *vm;
 
 #define GET_IP(_vm)	\
@@ -189,8 +187,11 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		case 16: // hlt
 			//printf("hlt thread: %d\n", vm_th->index);
 			vm_th->active = 0;
-			vm_print_internal_state(vm_th);
-			//printf("DATA from thread %d: %x\n", vm_th->index, vm->data[0]); 						
+			pthread_cond_signal(&vm->thread_state[vm_th->index].cond_active);
+		break;
+		case 17: // sleep
+			int ms = REGS(vm_th, ARGS(instr, 0)) / 1000;
+			sleep(ms);
 		break;
 	}
 }
@@ -220,13 +221,20 @@ void *vm_thread_run(struct vm_thread *vm_th)
 	}
 }
 
+inline void vm_wait_on_active(struct vm_thread *vm_th, int th_index)
+{
+	pthread_mutex_lock(&vm->thread_state[th_index].lock_active);
+	while(vm->thread_state[th_index].active) {
+		pthread_cond_wait(&vm->thread_state[th_index].cond_active, &vm->thread_state[th_index].lock_active);
+	}
+	pthread_mutex_unlock(&vm->thread_state[th_index].lock_active);
+
+}
+
 void vm_wait(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 {
 	int th_index = REGS(vm_th, ARGS(instr, 0));
-	// TODO use pthread_cond
-	while(vm->thread_state[th_index].active) {
-		sleep(0.1);
-	}
+	vm_wait_on_active(vm_th, th_index);
 } 
 
 void vm_setup_new_thread(struct vm_thread *vm_th, struct esetvm2_instruction instr, uint32_t address) {
@@ -259,7 +267,6 @@ void vm_start()
 	pthread_create(&vm->threads[0], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[0]);
 	pthread_detach(vm->threads[0]);
 
-	while(vm->thread_state[0].active) sleep(0.1);
-
+	vm_wait_on_active(&vm->thread_state[0], 0);
 }
 #endif

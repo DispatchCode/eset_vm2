@@ -28,6 +28,8 @@ struct vm_thread
 
 	// TODO mutex lock 'active'
 	// TODO cond 'active'
+	pthread_mutex_t lock_active;
+	pthread_cond_t cond_active;
 };
 
 struct esetvm2
