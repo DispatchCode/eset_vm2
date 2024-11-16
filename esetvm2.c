@@ -11,11 +11,11 @@
 
 struct esetvm2 *vm;
 
-#define GET_IP(_vm)	\
-	_vm->ip	\
+#define GET_IP()	\
+	vm_th->ip	\
 
-#define INC_IP(_vm)	\
-	++_vm->ip	\
+#define INC_IP()	\
+	++vm_th->ip	\
 
 #define REGS(_rindex)	\
 	vm_th->regs[_rindex]
@@ -83,7 +83,7 @@ struct esetvm2hdr * vm_load_task(FILE *fp, int memory_size)
 
 static inline uint8_t vm_mem_ru8n(struct vm_thread *vm_th, int bytes)
 {
-	return vm->memory[GET_IP(vm_th) + bytes];
+	return vm->memory[GET_IP() + bytes];
 }
 
 inline uint8_t vm_mem_ru8(struct vm_thread *vm_th)
