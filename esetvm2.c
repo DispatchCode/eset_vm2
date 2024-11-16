@@ -17,6 +17,29 @@ struct esetvm2 *vm;
 #define INC_IP(_vm)	\
 	++_vm->ip	\
 
+#define REGS(_rindex)	\
+	vm_th->regs[_rindex]
+
+#define ARGS(_aindex)	\
+	instr.arg[_aindex]
+
+/* Read from source, eiter memory or register  */
+#define RARGX(_index)																				\
+	(unlikely(instr.mem_bytes[_index]) ? vm_read_mem(vm_th, instr, _index) : REGS(ARGS(_index))) 
+
+/* Write to the destination, either memory or register  */
+#define WARGX(_val)																		\
+{																						\
+	if(instr.mem_bytes[dst_index])														\
+		memcpy(&vm->data[REGS(ARGS(dst_index))], &_val, instr.mem_bytes[dst_index]);	\
+	else																				\
+		REGS(arg) = _val;																\
+};
+
+/* Math operations, between registers or memory  */
+#define MATH_OP(_sign)			\
+	(RARGX(0) _sign RARGX(1))
+
 
 #ifndef ESETVM2_DISASSEMBLY
 struct esetvm2_instruction decode(struct vm_thread *vm_th);
@@ -101,115 +124,64 @@ inline int vm_end_of_code(struct vm_thread *vm_th)
 	return vm_th->ip < vm->memory_size;
 }
 
-// TODO handle reg / mem operation checking reg_or_mem[]
-#define REGS(_vm_th, _rindex) \
-	_vm_th->regs[_rindex]
-
-#define ARGS(_instr, _aindex)\
-	_instr.arg[_aindex]
 
 static inline uint64_t vm_read_mem(struct vm_thread *vm_th, struct esetvm2_instruction instr, int index) {
 	int bytes = instr.mem_bytes[index] - 1;
-	uint64_t val = vm->data[REGS(vm_th, ARGS(instr, index)) + bytes];
-	int reg_index = REGS(vm_th, ARGS(instr, index));
-	printf("MEM, size: %d, index %d ", bytes ,index);
+	uint64_t val = vm->data[REGS(ARGS(index)) + bytes];
+	int reg_index = REGS(ARGS(index));
 
 	while(bytes-- > 0)
 		val = (val<<8) | vm->data[reg_index + bytes];
 	
-	printf("val %lx\n", val);
-	
 	return val;
 }
 
-// TODO WRITE MEM
-
-#define ARGX(_vm_th, _instr, _index) \
-	(unlikely(_instr.mem_bytes[_index]) ? vm_read_mem(_vm_th, _instr, _index) : REGS(_vm_th, ARGS(_instr, _index))) 
-
-
-// TODO support also memory operations 
-#define MATH_OP(_vm_th, _instr, _sign)	\
-	(ARGX(_vm_th, _instr, 0) _sign ARGX(_vm_th, _instr, 1))
-
-
 static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 {
-	//printf("vm_execute, thread: %d ", vm_th->index);
+	int64_t val;
 	struct instr_info info;
+	uint8_t arg;
+	int dst_index;
 
-	// Useful information that help decoding the instr.
 	info = instr_table[instr.op_table_index];
- 	//printf("%s\n", info.mnemonic);
-	//printf("INSTR_TABLE_INDEX: %d\n", instr.op_table_index);
+
+	dst_index = info.nr_args-1;
+	arg = ARGS(dst_index);
 	
 	switch(instr.op_table_index) {
 		case 0: // mov
-			// dst = memory operand
-			if(instr.mem_bytes[1]) {
-				uint64_t src = ARGX(vm_th, instr, 0);
-				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 1))], &src, instr.mem_bytes[1]);
-			}
-			else {
-				REGS(vm_th, ARGS(instr, 1)) = ARGX(vm_th, instr, 0);
-			} 
+			val = RARGX(0);
+			WARGX(val)
 		break;
 		case 1: // loadConst
-			if(instr.mem_bytes[0])
-				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 0))], &instr.constant, instr.mem_bytes[0]);
-			else
-				REGS(vm_th, ARGS(instr, 0)) = instr.constant;
+			WARGX(instr.constant)
 		break;
 		case 2: // add
-			if(instr.mem_bytes[2]) {
-				int64_t val = MATH_OP(vm_th, instr, +);
-				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
-			}
-			else{
-				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, +);
-			}
+			val = MATH_OP(+);
+			WARGX(val)	
 		break;
 		case 3: // sub
-			if(instr.mem_bytes[2]) {
-				int64_t val = MATH_OP(vm_th, instr, -);
-				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
-			}
-			else{
-				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, -);
-			}
+			val = MATH_OP(-);
+			WARGX(val)
 		break;
 		case 4: // div
-			if(instr.mem_bytes[2]) {
-				int64_t val = MATH_OP(vm_th, instr, /);
-				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
-			}
-			else{
-				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, /);
-			}
+			val = MATH_OP(/);
+			WARGX(val);
 		break;
 		case 5: // mod
-			if(instr.mem_bytes[2]) {
-				int64_t val = MATH_OP(vm_th, instr, %);
-				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
-			}
-			else{
-				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, %);
-			}
+			val = MATH_OP(%);
+			WARGX(val);
 		break;
 		case 6: // mul
-			if(instr.mem_bytes[2]) {
-				int64_t val = MATH_OP(vm_th, instr, *);
-				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
-			}
-			else{
-				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, *);
-			}	
+			val = MATH_OP(*);
+			WARGX(val);
 		break;
-		case 7: { // compare
-			REGS(vm_th, ARGS(instr, 2)) = REGS(vm_th, ARGS(instr, 0)) > REGS(vm_th, ARGS(instr, 1));
-
-			if(REGS(vm_th, ARGS(instr, 0)) < REGS(vm_th, ARGS(instr, 1)))
-				REGS(vm_th, ARGS(instr, 2)) = -1;
+		case 7: {// compare
+			val = RARGX(0) > RARGX(1);
+			if(RARGX(0) < RARGX(1))
+				val = -1;
+			
+			WARGX(val)
 		};
 		break;
 		case 8: // jump
@@ -223,18 +195,10 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		case 12: // consoleRead
 		break;
 		case 13: // consoleWrite
-		{
-			if(instr.mem_bytes[0]) {
-				uint64_t val = ARGX(vm_th, instr, 0);
-				memcpy(&val, &vm->data[REGS(vm_th, ARGS(instr,0))], instr.mem_bytes[0]);
-				printf("%016lx\n", val);
-			} else
-				printf("%016lx\n", REGS(vm_th, ARGS(instr, 0)));
-		};
+			printf("%016lx\n", RARGX(0));
 		break;
 		case 14: // createThread
-			uint32_t address = instr.address;
-			vm_setup_new_thread(vm_th, instr, address);	
+			vm_setup_new_thread(vm_th, instr, instr.address);	
 		break;
 		case 15: // joinThread
 			vm_wait(vm_th, instr);
@@ -245,7 +209,7 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 			pthread_cond_signal(&vm->thread_state[vm_th->index].cond_active);
 		break;
 		case 17: // sleep
-			int ms = REGS(vm_th, ARGS(instr, 0)) / 1000;
+			int ms = REGS(arg) / 1000;
 			sleep(ms);
 		break;
 	}
@@ -288,7 +252,7 @@ inline void vm_wait_on_active(struct vm_thread *vm_th, int th_index)
 
 void vm_wait(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 {
-	int th_index = REGS(vm_th, ARGS(instr, 0));
+	int th_index = REGS(ARGS(0));
 	vm_wait_on_active(vm_th, th_index);
 } 
 
@@ -298,7 +262,7 @@ void vm_setup_new_thread(struct vm_thread *vm_th, struct esetvm2_instruction ins
 
 	//printf("setup new thread (thread_count: %d)\n", thread_count);
 	
-	REGS(vm_th, ARGS(instr, 0)) = thread_count;
+	REGS(ARGS(0)) = thread_count;
 
 	//vm->thread_state = realloc(vm->thread_state, (1+thread_count)*sizeof(struct vm_thread));
 	vm->thread_state[thread_count].index = thread_count;

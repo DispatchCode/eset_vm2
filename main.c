@@ -12,7 +12,7 @@ extern struct esetvm2 *vm;
 
 int main() {
 	int ret = 0;
-	FILE *fp = fopen("mem.evm", "rb");
+	FILE *fp = fopen("samples/precompiled/memory.evm", "rb");
 	
 	if(!fp) {
 		printf(".evm file not found, abort.\n");
