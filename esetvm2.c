@@ -102,15 +102,36 @@ inline int vm_end_of_code(struct vm_thread *vm_th)
 }
 
 // TODO handle reg / mem operation checking reg_or_mem[]
-#define REGS(_vm, _rindex) \
-	_vm->regs[_rindex]	\
+#define REGS(_vm_th, _rindex) \
+	_vm_th->regs[_rindex]
 
 #define ARGS(_instr, _aindex)\
 	_instr.arg[_aindex]
 
+static inline uint64_t vm_read_mem(struct vm_thread *vm_th, struct esetvm2_instruction instr, int index) {
+	int bytes = instr.mem_bytes[index] - 1;
+	uint64_t val = vm->data[REGS(vm_th, ARGS(instr, index)) + bytes];
+	int reg_index = REGS(vm_th, ARGS(instr, index));
+	printf("MEM, size: %d, index %d ", bytes ,index);
+
+	while(bytes-- > 0)
+		val = (val<<8) | vm->data[reg_index + bytes];
+	
+	printf("val %lx\n", val);
+	
+	return val;
+}
+
+// TODO WRITE MEM
+
+#define ARGX(_vm_th, _instr, _index) \
+	(unlikely(_instr.mem_bytes[_index]) ? vm_read_mem(_vm_th, _instr, _index) : REGS(_vm_th, ARGS(_instr, _index))) 
+
+
 // TODO support also memory operations 
-#define MATH_OP(_vm, _instr, _sign)	\
-	REGS(_vm, ARGS(_instr, 2)) = REGS(_vm, ARGS(_instr, 0)) _sign REGS(_vm, ARGS(_instr, 1))
+#define MATH_OP(_vm_th, _instr, _sign)	\
+	(ARGX(_vm_th, _instr, 0) _sign ARGX(_vm_th, _instr, 1))
+
 
 static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 {
@@ -124,31 +145,65 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 	
 	switch(instr.op_table_index) {
 		case 0: // mov
-			uint64_t mem_index = REGS(vm_th, ARGS(instr, 1));
-			//printf("mem_index, mov: %d ", mem_index);
- 
-			uint64_t val = REGS(vm_th, ARGS(instr,0));
-			//printf("mov, val: %d, byte to move: %d\n", val, instr.reg_or_mem[1]);
-			
-			memcpy(&vm->data[mem_index], &val, instr.reg_or_mem[1]);
+			// dst = memory operand
+			if(instr.mem_bytes[1]) {
+				uint64_t src = ARGX(vm_th, instr, 0);
+				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 1))], &src, instr.mem_bytes[1]);
+			}
+			else {
+				REGS(vm_th, ARGS(instr, 1)) = ARGX(vm_th, instr, 0);
+			} 
 		break;
 		case 1: // loadConst
-			REGS(vm_th, ARGS(instr, 0)) = instr.constant;
+			if(instr.mem_bytes[0])
+				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 0))], &instr.constant, instr.mem_bytes[0]);
+			else
+				REGS(vm_th, ARGS(instr, 0)) = instr.constant;
 		break;
 		case 2: // add
-			MATH_OP(vm_th, instr, +);
+			if(instr.mem_bytes[2]) {
+				int64_t val = MATH_OP(vm_th, instr, +);
+				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
+			}
+			else{
+				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, +);
+			}
 		break;
 		case 3: // sub
-			MATH_OP(vm_th, instr, -);
+			if(instr.mem_bytes[2]) {
+				int64_t val = MATH_OP(vm_th, instr, -);
+				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
+			}
+			else{
+				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, -);
+			}
 		break;
 		case 4: // div
-			MATH_OP(vm_th, instr, /);
+			if(instr.mem_bytes[2]) {
+				int64_t val = MATH_OP(vm_th, instr, /);
+				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
+			}
+			else{
+				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, /);
+			}
 		break;
 		case 5: // mod
-			MATH_OP(vm_th, instr, %);
+			if(instr.mem_bytes[2]) {
+				int64_t val = MATH_OP(vm_th, instr, %);
+				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
+			}
+			else{
+				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, %);
+			}
 		break;
 		case 6: // mul
-			MATH_OP(vm_th, instr, *);
+			if(instr.mem_bytes[2]) {
+				int64_t val = MATH_OP(vm_th, instr, *);
+				memcpy(&vm->data[REGS(vm_th, ARGS(instr, 2))], &val, instr.mem_bytes[2]);
+			}
+			else{
+				REGS(vm_th, ARGS(instr, 2)) = MATH_OP(vm_th, instr, *);
+			}	
 		break;
 		case 7: { // compare
 			REGS(vm_th, ARGS(instr, 2)) = REGS(vm_th, ARGS(instr, 0)) > REGS(vm_th, ARGS(instr, 1));
@@ -169,9 +224,9 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		break;
 		case 13: // consoleWrite
 		{
-			if(instr.ss[0]) {
-				uint64_t val;
-				memcpy(&val, &vm->data[REGS(vm_th, ARGS(instr,0))], instr.reg_or_mem[0]);
+			if(instr.mem_bytes[0]) {
+				uint64_t val = ARGX(vm_th, instr, 0);
+				memcpy(&val, &vm->data[REGS(vm_th, ARGS(instr,0))], instr.mem_bytes[0]);
 				printf("%016lx\n", val);
 			} else
 				printf("%016lx\n", REGS(vm_th, ARGS(instr, 0)));

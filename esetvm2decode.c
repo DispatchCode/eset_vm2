@@ -23,8 +23,8 @@ static void print_decoded_instr(struct esetvm2_instruction instr) {
 	if((info.constant + info.addr) && info.nr_args) printf(", ");
 
 	for(int i=0; i<info.nr_args; i++) {
-		if(instr.ss[i])
-			printf("%d[r%d]%c", instr.reg_or_mem[i], instr.arg[i], (i != info.nr_args-1) ? ',' : ' ');
+		if(instr.mem_bytes[i])
+			printf("%d[r%d]%c", instr.mem_bytes[i], instr.arg[i], (i != info.nr_args-1) ? ',' : ' ');
 		else
 			printf("r%d%c", instr.arg[i], (i != info.nr_args-1) ? ',' : ' ');
 	}
@@ -62,6 +62,7 @@ static struct esetvm2_instruction decode_instruction(struct vm_thread *vm_th, in
 	// TODO info: could be changed using an enum for ARG, CONST, ADDR
 	info = instr_table[op_map_index];
 	instr.op_table_index = op_map_index;
+	memset(&instr.mem_bytes, 0, sizeof(instr.mem_bytes));
 
 	// TODO stored inside the VM ?
 	code_bit = vm_th->ip + info.op_size;
@@ -83,12 +84,12 @@ static struct esetvm2_instruction decode_instruction(struct vm_thread *vm_th, in
 			case 0:
 				instr.arg[i] = read_const(code_bit+1, 4);
 				code_bit += 5;
-				instr.ss[i] = 0;
+				//instr.ss[i] = 0;
 				break;	
 			case 1:
-				instr.reg_or_mem[i] = type[read_const(code_bit+1,2)];
+				instr.mem_bytes[i] = type[read_const(code_bit+1,2)];
 				instr.arg[i] = read_const(code_bit+3, 4);
-				instr.ss[i] = 1;
+				//instr.ss[i] = 1;
 				code_bit += 7;
 				break;
 		}

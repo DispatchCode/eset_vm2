@@ -10,6 +10,9 @@
 #include "esetvm2hdr.h"
 #include "esetvm2decode.h"
 
+# define likely(x)	__builtin_expect(!!(x), 1)
+# define unlikely(x)	__builtin_expect(!!(x), 0)
+
 struct vm_thread
 {
 	// index inside threads

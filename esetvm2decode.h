@@ -58,7 +58,7 @@ struct instr_info
 }
 
 static uint8_t type[4] = {
-	1, 4, 2, 8
+	1, 2, 4, 8
 };
 
 struct esetvm2_instruction
@@ -69,8 +69,8 @@ struct esetvm2_instruction
 	uint32_t address;	 	 // 32-bit address inside the code (jump to code_off)
 	int64_t  constant;		 // 64-bit constant (immediate value)
 	
-	uint8_t  ss[4];
-	uint8_t  reg_or_mem[4];  // index into type[], for each arg     
+	//uint8_t  ss[4];
+	uint8_t  mem_bytes[4];  // index into type[], for each arg     
 
 #ifdef DEBUG_PRINT_INSTR
 	uint32_t code_off;
