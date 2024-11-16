@@ -11,11 +11,11 @@
 
 struct esetvm2 *vm;
 
-#define GET_IP()	\
-	vm_th->ip	\
+#define GET_IP()		\
+	vm_th->ip			\
 
-#define INC_IP()	\
-	++vm_th->ip	\
+#define INC_IP()		\
+	++vm_th->ip			\
 
 #define REGS(_rindex)	\
 	vm_th->regs[_rindex]
@@ -37,8 +37,8 @@ struct esetvm2 *vm;
 };
 
 /* Math operations, between registers or memory  */
-#define MATH_OP(_sign)			\
-	(RARGX(0) _sign RARGX(1))
+#define MATH_OP(math_op)			\
+	(RARGX(0) math_op RARGX(1))
 
 
 #ifndef ESETVM2_DISASSEMBLY
