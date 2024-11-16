@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(esetvm2 C)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS "-O2 -g")
+set(CMAKE_C_FLAGS "-O2")
 
 set(SOURCES main.c esetvm2hdr.c esetvm2decode.c esetvm2.c)
 
