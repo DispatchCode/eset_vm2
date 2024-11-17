@@ -29,11 +29,20 @@ struct vm_thread
 	// thread stack
 	uint8_t *call_stack;
 
-	// TODO mutex lock 'active'
-	// TODO cond 'active'
 	pthread_mutex_t lock_active;
 	pthread_cond_t cond_active;
 };
+
+/* 
+ * TODO hashmap to store locks: lock object is the key,
+ *		while the value is the thread
+ *
+ *	-	If the lock is NOT present in the table, then add it
+ * 		with thread_index value
+ *	-	if IT IS present, then check the value:
+ *		- if IT HAS the same value, message on screen (UB, not possibile, should never happen)
+ *		- if HAS NOT the same value, wait on it, till removed from the hashmap by the other thread
+ */
 
 struct esetvm2
 {
