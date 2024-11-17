@@ -227,13 +227,19 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		break;
 		case 16: // hlt
 			vm_th->active = 0;
-			pthread_cond_signal(&vm->thread_state[vm_th->index].cond_active);
 			vm_shift_ptr(vm_th, instr.len);
+			pthread_cond_signal(&vm->thread_state[vm_th->index].cond_active);
 		break;
 		case 17: // sleep
 			int ms = REGS(arg) / 1000;
 			sleep(ms);
 			vm_shift_ptr(vm_th, instr.len);
+		break;
+		default:
+			printf("\nWARNING: invalid opcode 0x%x. Stopping thread %d...\n", opcode_map[instr.op_table_index], vm_th->index);
+			vm_th->active = 0; 
+			vm_shift_ptr(vm_th, instr.len);
+			pthread_cond_signal(&vm->thread_state[vm_th->index].cond_active);
 		break;
 	}
 }
