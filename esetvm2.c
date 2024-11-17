@@ -28,7 +28,7 @@ struct esetvm2 *vm;
 
 /* Read from source, eiter memory or register  */
 #define RARGX(_index)																				\
-	(unlikely(instr.mem_bytes[_index]) ? vm_read_mem(vm_th, instr, _index) : REGS(ARGS(_index))) 
+	(unlikely(instr.mem_bytes[_index]) ? vm_read_mem(vm_th, instr, _index) : (int64_t)REGS(ARGS(_index))) 
 
 /* Write to the destination, either memory or register  */
 #define WARGX(_val)																		\
@@ -68,7 +68,7 @@ void init_vm_instance(FILE * fp, int file_size)
 	vm->thread_count = 1;	
 	vm->thread_state = calloc(10, sizeof(struct vm_thread));
 	vm->thread_state[0].ip = CODE_OFFSET_BIT;
-	
+
 	vm->threads = calloc(10, sizeof(pthread_t));
 }
 
@@ -127,10 +127,25 @@ inline int vm_end_of_code(struct vm_thread *vm_th)
 	return vm_th->ip < vm->memory_size;
 }
 
+static inline void vm_call(struct vm_thread *vm_th, struct esetvm2_instruction instr) {
+	if(unlikely(vm_th->tos == VM_STACK_SIZE)) {
+		printf("WARNING: thread %d reach the maximum TOS. Expected crash due to Stack Overflow\n");
+	}
 
-static inline uint64_t vm_read_mem(struct vm_thread *vm_th, struct esetvm2_instruction instr, int index) {
+	vm_th->call_stack[vm_th->tos++] = vm_th->ip + instr.len - CODE_OFFSET_BIT;
+}
+
+static inline uint32_t vm_ret(struct vm_thread *vm_th) {
+	if(unlikely(vm_th->tos == 0)) {
+		printf("WARNING: thread %d no more elements in the stack\n");
+	}
+
+	return vm_th->call_stack[--vm_th->tos];
+}
+
+static inline int64_t vm_read_mem(struct vm_thread *vm_th, struct esetvm2_instruction instr, int index) {
 	int bytes = instr.mem_bytes[index] - 1;
-	uint64_t val = vm->data[REGS(ARGS(index)) + bytes];
+	int64_t val = vm->data[REGS(ARGS(index)) + bytes];
 	int reg_index = REGS(ARGS(index));
 
 	while(bytes-- > 0)
@@ -147,28 +162,27 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 	int dst_index;
 
 	info = instr_table[instr.op_table_index];
-
 	dst_index = info.nr_args-1;
 	arg = ARGS(dst_index);
 	
 	switch(instr.op_table_index) {
 		case 0: // mov
 			val = RARGX(0);
-			WARGX(val)
+			WARGX(val);
 			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 1: // loadConst
-			WARGX(instr.constant)
+			WARGX(instr.constant);
 			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 2: // add
 			val = MATH_OP(+);
-			WARGX(val)	
+			WARGX(val);	
 			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 3: // sub
 			val = MATH_OP(-);
-			WARGX(val)
+			WARGX(val);
 			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 4: // div
@@ -187,11 +201,13 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 7: {// compare
-			val = RARGX(0) > RARGX(1);
-			if(RARGX(0) < RARGX(1))
+			int64_t a0 = RARGX(0);
+			int64_t a1 = RARGX(1);
+			val = a0 > a1;
+			if(a0 < a1)
 				val = -1;
 			
-			WARGX(val)
+			WARGX(val);
 			vm_shift_ptr(vm_th, instr.len);
 		};
 		break;
@@ -201,8 +217,9 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		case 9: // jumpEqual
 			if(RARGX(0) == RARGX(1)) {
 				SET_IP(instr.address);
-			} else
+			} else {
 				vm_shift_ptr(vm_th, instr.len);
+			}
 		break;
 		case 10: // read
 		break;
@@ -234,6 +251,13 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 			int ms = REGS(arg) / 1000;
 			sleep(ms);
 			vm_shift_ptr(vm_th, instr.len);
+		break;
+		case 18: // call
+			vm_call(vm_th, instr);
+			SET_IP(instr.address);
+		break;
+		case 19: // ret
+			SET_IP(vm_ret(vm_th));
 		break;
 		default:
 			printf("\nWARNING: invalid opcode 0x%x. Stopping thread %d...\n", opcode_map[instr.op_table_index], vm_th->index);
@@ -305,6 +329,9 @@ void vm_start()
 	// initial thread
 	vm->thread_state[0].index  = 0;
 	vm->thread_state[0].active = 1;
+
+	vm->thread_state[0].call_stack = calloc(VM_STACK_SIZE, sizeof(uint32_t)); // TODO 4-KB for now, but make it dynamic
+	vm->thread_state[0].tos = 0; // Stack starts from 0
 	
 	pthread_create(&vm->threads[0], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[0]);
 	pthread_detach(vm->threads[0]);

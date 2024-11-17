@@ -12,7 +12,7 @@ extern struct esetvm2 *vm;
 
 int main() {
 	int ret = 0;
-	FILE *fp = fopen("thread.evm", "rb");
+	FILE *fp = fopen("samples/precompiled/xor.evm", "rb");
 	
 	if(!fp) {
 		printf(".evm file not found, abort.\n");

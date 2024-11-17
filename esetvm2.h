@@ -10,8 +10,11 @@
 #include "esetvm2hdr.h"
 #include "esetvm2decode.h"
 
-# define likely(x)	__builtin_expect(!!(x), 1)
-# define unlikely(x)	__builtin_expect(!!(x), 0)
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
+
+// 4-KB stack
+#define VM_STACK_SIZE 1024 
 
 struct vm_thread
 {
@@ -27,7 +30,8 @@ struct vm_thread
 	uint32_t ip;
 
 	// thread stack
-	uint8_t *call_stack;
+	uint32_t *call_stack;
+	int tos;
 
 	pthread_mutex_t lock_active;
 	pthread_cond_t cond_active;

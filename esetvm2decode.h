@@ -95,7 +95,7 @@ struct esetvm2_instr_decoded
 {										\
 	if(_instr.size == _instr.tos) {		\
 		_instr.size *= 2;				\
-		_instr.instructions = realloc(_instr.instructions, _instr.size);	\
+		_instr.instructions = realloc(_instr.instructions, _instr.size*sizeof(struct esetvm2_instruction));	\
 	}											\
 	_instr.instructions[_instr.tos++] = _val; 	\
 };												\
