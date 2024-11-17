@@ -11,6 +11,9 @@
 
 struct esetvm2 *vm;
 
+#define SET_IP(new_ip)	\
+	vm_th->ip = (CODE_OFFSET_BIT + new_ip)
+
 #define GET_IP()		\
 	vm_th->ip			\
 
@@ -152,29 +155,36 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		case 0: // mov
 			val = RARGX(0);
 			WARGX(val)
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 1: // loadConst
 			WARGX(instr.constant)
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 2: // add
 			val = MATH_OP(+);
 			WARGX(val)	
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 3: // sub
 			val = MATH_OP(-);
 			WARGX(val)
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 4: // div
 			val = MATH_OP(/);
 			WARGX(val);
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 5: // mod
 			val = MATH_OP(%);
 			WARGX(val);
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 6: // mul
 			val = MATH_OP(*);
 			WARGX(val);
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 7: {// compare
 			val = RARGX(0) > RARGX(1);
@@ -182,35 +192,48 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 				val = -1;
 			
 			WARGX(val)
+			vm_shift_ptr(vm_th, instr.len);
 		};
 		break;
 		case 8: // jump
+			SET_IP(instr.address);
 		break;
 		case 9: // jumpEqual
+			if(RARGX(0) == RARGX(1)) {
+				SET_IP(instr.address);
+			} else
+				vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 10: // read
 		break;
 		case 11: // write
 		break;
 		case 12: // consoleRead
+			scanf("%lx", &val);
+			WARGX(val);
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 13: // consoleWrite
 			printf("%016lx\n", RARGX(0));
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 14: // createThread
 			vm_setup_new_thread(vm_th, instr, instr.address);	
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 15: // joinThread
 			vm_wait(vm_th, instr);
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 16: // hlt
-			//printf("hlt thread: %d\n", vm_th->index);
 			vm_th->active = 0;
 			pthread_cond_signal(&vm->thread_state[vm_th->index].cond_active);
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 17: // sleep
 			int ms = REGS(arg) / 1000;
 			sleep(ms);
+			vm_shift_ptr(vm_th, instr.len);
 		break;
 	}
 }
@@ -219,18 +242,12 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 
 void *vm_thread_run(struct vm_thread *vm_th)
 {
-	//printf("vm_thread_run, thread: %d\n", vm_th->index);
 	while(vm_th->active)
 	{
 		struct esetvm2_instruction instr = decode(vm_th);
 
 		vm_execute(vm_th, instr);
 		
-		// Move the increment inside the execution or better the decode
-		//if(!instr.address)
-			vm_shift_ptr(vm_th, instr.len);
-		// TODO don't call the same function: dont sum but assign
-	
 		#ifdef VM_PRINT_STATE
 			vm_print_internal_state(vm_th);
 		#endif
