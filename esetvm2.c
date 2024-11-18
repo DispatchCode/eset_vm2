@@ -12,7 +12,7 @@
 struct esetvm2 *vm;
 
 #define SET_IP(new_ip)	\
-	vm_th->ip = (CODE_OFFSET_BIT + new_ip)
+	vm_th->ip = new_ip
 
 #define GET_IP()		\
 	vm_th->ip			\
@@ -59,39 +59,42 @@ void vm_print_internal_state(struct vm_thread *vm_th)
 	printf("\n----------------------------\n");
 }
 
-void init_vm_instance(FILE * fp, int file_size)
+static void init_vm_instance(FILE * fp, int file_size)
 {
 	vm = calloc(1, sizeof(struct esetvm2));
-	vm->memory = calloc(1, file_size);
-	vm->memory_size = file_size;
-
+	
 	vm->thread_count = 1;	
 	vm->thread_state = calloc(10, sizeof(struct vm_thread));
-	vm->thread_state[0].ip = CODE_OFFSET_BIT;
+	vm->thread_state[0].ip = 0;
 
 	vm->threads = calloc(10, sizeof(pthread_t));
 }
 
-struct esetvm2hdr * vm_load_task(FILE *fp, int memory_size)
+static void load_into_memory(struct esetvm2hdr *vm_hdr, uint8_t *buff) 
 {
-	struct esetvm2hdr *vm_hdr;	
-
-	fread(vm->memory, sizeof(uint8_t), memory_size, fp);
-	vm_hdr = load_task();	
-
+	vm->code = calloc(vm_hdr->code_size, sizeof(uint8_t));
 	vm->data = calloc(vm_hdr->data_size, sizeof(uint8_t));
 
+	int init_data_off = vm_hdr->code_size + CODE_OFFSET;
+	memcpy(vm->code, buff + CODE_OFFSET, vm_hdr->code_size);
+	if(vm_hdr->initial_data_size)
+		memcpy(vm->data, buff + init_data_off, vm_hdr->initial_data_size);
+}
+
+struct esetvm2hdr * vm_init(FILE *fp, int file_size)
+{
+	struct esetvm2hdr *vm_hdr;	
+	uint8_t *buff = calloc(1, file_size);
+
+	fread(buff, sizeof(uint8_t), file_size, fp);
+	vm_hdr = vm_load_hdr(buff);	
+
+	init_vm_instance(fp, file_size);
+	load_into_memory(vm_hdr, buff);	
+	
+	free(buff);
+	
 	return vm_hdr;
-}
-
-static inline uint8_t vm_mem_ru8n(struct vm_thread *vm_th, int bytes)
-{
-	return vm->memory[GET_IP() + bytes];
-}
-
-inline uint8_t vm_mem_ru8(struct vm_thread *vm_th)
-{
-	return vm_mem_ru8n(vm_th, 0);
 }
 
 inline uint8_t vm_next_op(struct vm_thread *vm_th)
@@ -122,17 +125,12 @@ inline void vm_shift_ptr(struct vm_thread *vm_th, uint8_t bits)
 	vm_th->ip += bits;
 }
 
-inline int vm_end_of_code(struct vm_thread *vm_th)
-{
-	return vm_th->ip < vm->memory_size;
-}
-
 static inline void vm_call(struct vm_thread *vm_th, struct esetvm2_instruction instr) {
 	if(unlikely(vm_th->tos == VM_STACK_SIZE)) {
 		printf("WARNING: thread %d reach the maximum TOS. Expected crash due to Stack Overflow\n");
 	}
 
-	vm_th->call_stack[vm_th->tos++] = vm_th->ip + instr.len - CODE_OFFSET_BIT;
+	vm_th->call_stack[vm_th->tos++] = vm_th->ip + instr.len;
 }
 
 static inline uint32_t vm_ret(struct vm_thread *vm_th) {
@@ -221,10 +219,10 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 				vm_shift_ptr(vm_th, instr.len);
 			}
 		break;
-		case 10: // read
-		break;
-		case 11: // write
-		break;
+		//case 10: // read
+		//break;
+		//case 11: // write
+		//break;
 		case 12: // consoleRead
 			scanf("%lx", &val);
 			WARGX(val);
@@ -314,7 +312,7 @@ void vm_setup_new_thread(struct vm_thread *vm_th, struct esetvm2_instruction ins
 	//vm->thread_state = realloc(vm->thread_state, (1+thread_count)*sizeof(struct vm_thread));
 	vm->thread_state[thread_count].index = thread_count;
 	vm->thread_state[thread_count].active = 1;
-	vm->thread_state[thread_count].ip = address + CODE_OFFSET_BIT;
+	vm->thread_state[thread_count].ip = address;
 	memcpy(&vm->thread_state[thread_count].regs, &vm_th->regs, 16*(sizeof(int64_t)));	
 
 	//threads = realloc(threads, (thread_count+1)*sizeof(pthread_t));

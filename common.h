@@ -9,7 +9,7 @@ static inline int get_bit_at(int pos)
 {
 	int byte_index = pos >> 3;
 	int bit_index  = pos % 8;
-	return (vm->memory[byte_index] >> (7 - bit_index) & 1);
+	return (vm->code[byte_index] >> (7 - bit_index) & 1);
 }
 
 static inline int64_t read_const(int start, int num_bits) {

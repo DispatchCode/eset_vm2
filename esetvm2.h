@@ -57,16 +57,14 @@ struct esetvm2
 	// real thread
 	pthread_t *threads;
 	
-	uint8_t *memory;
-	int memory_size;
+	uint8_t *code;
 	
 	// "data" size buffer (memory used by the program)
 	uint8_t *data;
 };
 
-void init_vm_instance(FILE *fp, int );
-struct esetvm2hdr * vm_load_task(FILE *fp, int );
-struct esetvm2hdr *load_task();
+struct esetvm2hdr * vm_init(FILE *fp, int );
+struct esetvm2hdr * vm_load_hdr(uint8_t *);
 
 /* interface over VM and memory */
 uint8_t vm_mem_ru8(struct vm_thread *);

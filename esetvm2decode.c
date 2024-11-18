@@ -98,7 +98,7 @@ static struct esetvm2_instruction decode_instruction(struct vm_thread *vm_th, in
 	//printf("Code bit: %d\n", code_bit - vm_th->ip );
 	instr.len = code_bit - vm_th->ip;
 #ifdef DEBUG_PRINT_INSTR
-	instr.code_off = vm_th->ip - CODE_OFFSET_BIT;
+	instr.code_off = vm_th->ip;
 #endif
 
 	return instr;
@@ -117,13 +117,13 @@ struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr) {
 	struct esetvm2_instr_decoded instr_decoded = INIT_INSTR_DECODED(10);
 	int instr = 0;
 	int code_size = hdr->code_size;
-	int bit_code_size = CODE_OFFSET_BIT + (code_size * 8) - (code_size % 8);
+	int bit_code_size = (code_size * 8) - (code_size % 8);
 
 	// faking a thread
 	vm->thread_state = realloc(vm->thread_state, 1*sizeof(struct vm_thread));
 
 	struct vm_thread *vm_th = &vm->thread_state[0];
-	vm_th->ip = CODE_OFFSET_BIT;
+	vm_th->ip = 0;
 
 	// TODO bugfix: wrong if padding is present
 	while(vm_th->ip < bit_code_size)
@@ -141,7 +141,7 @@ struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr) {
 		instr = decode_instruction(vm_th, op_map_index);
 
 #ifdef DEBUG_PRINT_INSTR
-		instr.code_off = vm_th->ip - CODE_OFFSET_BIT;
+		instr.code_off = vm_th->ip;
 		print_decoded_instr(instr);
 #endif
 

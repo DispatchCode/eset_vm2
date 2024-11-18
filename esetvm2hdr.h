@@ -14,7 +14,7 @@
 struct esetvm2hdr
 {
 	uint8_t  magic[8];
-	uint32_t code_size;         // in instructions
+	uint32_t code_size;         // bytes
 	uint32_t data_size;         // bytes
 	uint32_t initial_data_size;	// bytes
 };

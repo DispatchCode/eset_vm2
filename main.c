@@ -12,7 +12,7 @@ extern struct esetvm2 *vm;
 
 int main() {
 	int ret = 0;
-	FILE *fp = fopen("samples/precompiled/xor.evm", "rb");
+	FILE *fp = fopen("samples/precompiled/crc.evm", "rb");
 	
 	if(!fp) {
 		printf(".evm file not found, abort.\n");
@@ -20,9 +20,8 @@ int main() {
 	}
 
 	int size = file_size(fp);
-	init_vm_instance(fp, size);
 	
-	struct esetvm2hdr *eset_vm_hdr = vm_load_task(fp, size);
+	struct esetvm2hdr *eset_vm_hdr = vm_init(fp, size);
 
 	if (!eset_vm_hdr) {
 		printf("Invalid task header\n");
@@ -42,8 +41,7 @@ int main() {
 #endif
 
 clean:
-	if (vm->memory)
-		free(vm->memory);
+	// TODO free allocated memory
 
 	return ret;
 }

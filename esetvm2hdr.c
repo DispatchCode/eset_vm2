@@ -38,16 +38,16 @@ uint32_t data_size()
 
 }
 
-struct esetvm2hdr *load_task()
+struct esetvm2hdr *vm_load_hdr(uint8_t *buff)
 {
 	struct esetvm2hdr *eset_hdr;
 	int valid;
 
 	eset_hdr = malloc(sizeof(struct esetvm2hdr));
-	memcpy(&eset_hdr->magic, vm->memory, 8);
-	memcpy(&eset_hdr->code_size, vm->memory+8, sizeof(uint32_t));
-	memcpy(&eset_hdr->data_size, vm->memory+12, sizeof(uint32_t));
-	memcpy(&eset_hdr->initial_data_size, vm->memory+16, sizeof(uint32_t));
+	memcpy(&eset_hdr->magic, buff, 8);
+	memcpy(&eset_hdr->code_size, buff+8, sizeof(uint32_t));
+	memcpy(&eset_hdr->data_size, buff+12, sizeof(uint32_t));
+	memcpy(&eset_hdr->initial_data_size, buff+16, sizeof(uint32_t));
 
 	valid = strcmp(eset_hdr->magic, MAGIC) && eset_hdr->data_size >= eset_hdr->initial_data_size;
 	
