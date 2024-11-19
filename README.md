@@ -11,20 +11,22 @@ ESET specifics: [Task.pdf](https://github.com/user-attachments/files/17654238/Ta
 ✔️  emulation<br>
 
 
-*Legend*<br>
-✅ - feature complete<br>
-✔️  - feature still incomplete<br>
-❌ - not yet present<br>
+> *Legend*<br>
+  ✅ - feature complete<br>
+  ✔️  - feature still incomplete<br>
+  ❌ - not yet present<br>
 
-🐛 code padding not detected properly (ie sometime an instruction not present will be decoded)
+### Bugs
+> 🐛 code padding not detected properly (ie sometime an instruction not present will be decoded).
+	It should not affect the execution because every thread/program ends with `hlt` to stop the thread.
 
 ## How it works?
-ESET created the code samples and a compiler that receive in input an "easm" file (a sort of assembly language, as you can see in the examples) and produce a compiled output with extension ".evm".
+ESET developed code samples and a compiler that takes an "easm" file as input (which is a type of assembly language, as demonstrated in the examples) and produces a compiled output with the ".evm" extension.
 
-The emulator take as an input an "evm" file and emulates it, accordingly to the specifics. The expected output of each code samples is described inside `samples/samples.txt` file.
+The emulator takes an "evm" file as input and emulates it according to the specifications. The expected output for each code sample is outlined in the **samples/samples.txt** file.
 
-The VM reads the entire input file and creates code sections like described in the document; a section for the code and a section for the data, plus a the file header.
-First thing done is the creation of the main thread: every new thread is created with `pcreate_thread` with its own private context (registers). Each thread decodes and executes the code without waiting for other threads.
+The VM reads the entire input file and creates code sections as described in the documentation: one section for the code, another for the data, and a file header. 
+The boot process starts creating the main thread. Each new thread is created using the `pthread_create()` function, with its own private context (registers). Each thread independently decodes and executes the code without waiting for other threads.
 
 ## Examples
 
