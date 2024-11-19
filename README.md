@@ -56,7 +56,7 @@ end:
 	hlt
 ```
 
-Output using the disassembler:
+Output using the disassembler:<br>
 ![Istantanea_2024-11-19_17-45-38](https://github.com/user-attachments/assets/c1478466-c4e8-4f5a-80cd-32056399c590)
 
 Note: the last instruction is wrongly decoded because of the bug mentioned on top.
@@ -66,7 +66,7 @@ It has been compiled with:
 12 #define ESETVM2_DISASSEMBLY
 ```
 
-Emulation, commenting the above lines:
+Emulation, commenting the above lines:<br>
 ![Istantanea_2024-11-19_17-49-14](https://github.com/user-attachments/assets/5ca8b229-6b3f-4972-8954-44d5ea2d931c)
 
 ### Self made example: `thread.evm`
@@ -117,6 +117,6 @@ Emulation, commenting the above lines:
  43     hlt
 ```
 
-Multiple executions in order to see changes in the output (because of multi-threading):
+Multiple executions in order to see changes in the output (because of multi-threading):<br>
 ![Istantanea_2024-11-19_17-57-01](https://github.com/user-attachments/assets/5f91678d-2dba-4893-a082-ff7b5d8b90e6)
 
