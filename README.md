@@ -11,8 +11,7 @@ ESET specifics: [Task.pdf](https://github.com/user-attachments/files/17654238/Ta
 ✔️  emulation<br>
 
 
-> *Legend*<br>
-  ✅ - feature complete<br>
+> ✅ - feature complete<br>
   ✔️  - feature still incomplete<br>
   ❌ - not yet present<br>
 
