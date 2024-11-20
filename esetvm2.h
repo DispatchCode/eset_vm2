@@ -61,9 +61,12 @@ struct esetvm2
 	
 	// "data" size buffer (memory used by the program)
 	uint8_t *data;
+	
+	// handle to a binary file
+	FILE *hbin;
 };
 
-struct esetvm2hdr * vm_init(FILE *fp, int );
+struct esetvm2hdr * vm_init(FILE *fp, int, char*);
 struct esetvm2hdr * vm_load_hdr(uint8_t *);
 
 /* interface over VM and memory */

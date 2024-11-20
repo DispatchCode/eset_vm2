@@ -81,7 +81,7 @@ static void load_into_memory(struct esetvm2hdr *vm_hdr, uint8_t *buff)
 		memcpy(vm->data, buff + init_data_off, vm_hdr->initial_data_size);
 }
 
-struct esetvm2hdr * vm_init(FILE *fp, int file_size)
+struct esetvm2hdr * vm_init(FILE *fp, int file_size, char *image_name)
 {
 	struct esetvm2hdr *vm_hdr;	
 	uint8_t *buff = calloc(1, file_size);
@@ -90,7 +90,13 @@ struct esetvm2hdr * vm_init(FILE *fp, int file_size)
 	vm_hdr = vm_load_hdr(buff);	
 
 	init_vm_instance(fp, file_size);
-	load_into_memory(vm_hdr, buff);	
+	load_into_memory(vm_hdr, buff);
+
+	char file_path[100] = "samples/";
+	strncat(file_path, image_name, sizeof(image_name));
+	strncat(file_path, ".bin", 5);
+
+	vm->hbin = fopen(file_path, "rwb");
 	
 	free(buff);
 	
@@ -219,8 +225,23 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 				vm_shift_ptr(vm_th, instr.len);
 			}
 		break;
-		//case 10: // read
-		//break;
+		case 10: // read
+			// TODO handle binary file name
+			uint64_t a1 = RARGX(0); // offset in input file
+			uint64_t a2 = RARGX(1); // number of bytes to read
+			uint64_t a3 = RARGX(2); // mem. addr. to which bytes will be stored
+
+			fseek(vm->hbin, a1, SEEK_SET);
+
+			uint64_t curr_byte = ftell(vm->hbin);
+			fread(&vm->data[a3], sizeof(uint8_t), a2, vm->hbin);
+			
+			// a2 can-t be trusted: bytes read could be less if not enough data exists
+			curr_byte = ftell(vm->hbin) - curr_byte;
+			WARGX(curr_byte);
+
+			vm_shift_ptr(vm_th, instr.len);
+		break;
 		//case 11: // write
 		//break;
 		case 12: // consoleRead

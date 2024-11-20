@@ -16,7 +16,7 @@ void print_task_hdr(struct esetvm2hdr * vm_hdr)
 	printf("\nSize of code (bytes): %d\n", vm_hdr->code_size);
 	printf("Size of data (bytes): %d\n", vm_hdr->data_size);
 	printf("Size of initial data (bytes): %d\n", vm_hdr->initial_data_size);
-	printf("================================\n");
+	printf("================================\n\n");
 }
 
 int file_size(FILE *fp) 

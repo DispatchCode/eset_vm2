@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <dirent.h>
+#include <string.h>
 
 #include "esetvm2.h"
 
@@ -8,24 +9,41 @@
 extern struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr);
 #endif
 
+#define PRECOMPILED_PATH "samples/precompiled/"
+#define EVM ".evm"
+
+// TODO menu to select the proper evm file
+
 extern struct esetvm2 *vm;
 
-int main() {
+int main(int argc, char *argv[]) {
+	char file_path[50] = "samples/precompiled/";
+	
 	int ret = 0;
-	FILE *fp = fopen("samples/precompiled/crc.evm", "rb");
+	if(argc < 2) {
+		printf("Missing input file, exiting.\n");
+		return -1;
+	}
+
+	strncat(file_path, argv[1], sizeof(argv[1]));
+	strncat(file_path, EVM, 5);
+
+	printf("Loading evm file %s...", file_path);
+
+	FILE *fp = fopen(file_path, "rb");
 	
 	if(!fp) {
-		printf(".evm file not found, abort.\n");
-		return -1;
+		printf("VM will load the proper evm file based on the name. Avoid entering the extension\n");
+		return -2;
 	}
 
 	int size = file_size(fp);
 	
-	struct esetvm2hdr *eset_vm_hdr = vm_init(fp, size);
+	struct esetvm2hdr *eset_vm_hdr = vm_init(fp, size, argv[1]);
 
 	if (!eset_vm_hdr) {
 		printf("Invalid task header\n");
-		ret = -1;
+		ret = -3;
 		goto clean;
 	}
 
@@ -41,6 +59,8 @@ int main() {
 #endif
 
 clean:
+	if(vm->hbin)
+		free(vm->hbin);
 	// TODO free allocated memory
 
 	return ret;
