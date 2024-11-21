@@ -9,15 +9,15 @@
 extern struct esetvm2_instr_decoded decode(struct esetvm2hdr *hdr);
 #endif
 
-#define PRECOMPILED_PATH "samples/precompiled/"
 #define EVM ".evm"
 
 // TODO menu to select the proper evm file
 
 extern struct esetvm2 *vm;
 
+
 int main(int argc, char *argv[]) {
-	char file_path[50] = "samples/precompiled/";
+	char file_path[120] = "samples/precompiled/";
 	
 	int ret = 0;
 	if(argc < 2) {
@@ -25,10 +25,12 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	strncat(file_path, argv[1], sizeof(argv[1]));
+	int cp_len = strlen(argv[1]) > strlen(file_path) ? strlen(file_path) : strlen(argv[1]);
+
+	strncat(file_path, argv[1], cp_len);
 	strncat(file_path, EVM, 5);
 
-	printf("Loading evm file %s...", file_path);
+	printf("Loading evm program %s ...\n", file_path);
 
 	FILE *fp = fopen(file_path, "rb");
 	
@@ -48,14 +50,12 @@ int main(int argc, char *argv[]) {
 	}
 
 	print_task_hdr(eset_vm_hdr);
+
 #ifdef ESETVM2_DISASSEMBLY
 	struct esetvm2_instr_decoded decoded_instr = decode(eset_vm_hdr);
 	printf("Instr decoded: %d\n", decoded_instr.tos);
-
 #else
-
 	vm_start();
-
 #endif
 
 clean:

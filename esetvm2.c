@@ -11,36 +11,36 @@
 
 struct esetvm2 *vm;
 
-#define SET_IP(new_ip)	\
+#define SET_IP(new_ip)												\
 	vm_th->ip = new_ip
 
-#define GET_IP()		\
-	vm_th->ip			\
+#define GET_IP()												\
+	vm_th->ip												\
 
-#define INC_IP()		\
-	++vm_th->ip			\
+#define INC_IP()												\
+	++vm_th->ip												\
 
-#define REGS(_rindex)	\
+#define REGS(_rindex)												\
 	vm_th->regs[_rindex]
 
-#define ARGS(_aindex)	\
+#define ARGS(_aindex)												\
 	instr.arg[_aindex]
 
 /* Read from source, eiter memory or register  */
-#define RARGX(_index)																				\
-	(unlikely(instr.mem_bytes[_index]) ? vm_read_mem(vm_th, instr, _index) : (int64_t)REGS(ARGS(_index))) 
+#define RARGX(_index)												\
+	(instr.mem_bytes[_index] ? vm_read_mem(vm_th, instr, _index) : (int64_t)REGS(ARGS(_index))) 
 
 /* Write to the destination, either memory or register  */
-#define WARGX(_val)																		\
-{																						\
-	if(instr.mem_bytes[dst_index])														\
-		memcpy(&vm->data[REGS(ARGS(dst_index))], &_val, instr.mem_bytes[dst_index]);	\
-	else																				\
-		REGS(arg) = _val;																\
+#define WARGX(_val)												\
+{														\
+	if(instr.mem_bytes[dst_index])										\
+		memcpy(&vm->data[REGS(ARGS(dst_index))], &_val, instr.mem_bytes[dst_index]);			\
+	else													\
+		REGS(arg) = _val;										\
 };
 
 /* Math operations, between registers or memory  */
-#define MATH_OP(math_op)			\
+#define MATH_OP(math_op)											\
 	(RARGX(0) math_op RARGX(1))
 
 
@@ -92,8 +92,9 @@ struct esetvm2hdr * vm_init(FILE *fp, int file_size, char *image_name)
 	init_vm_instance(fp, file_size);
 	load_into_memory(vm_hdr, buff);
 
-	char file_path[100] = "samples/";
-	strncat(file_path, image_name, sizeof(image_name));
+	char file_path[250] = "samples/";
+	int cp_len = strlen(image_name) > strlen(file_path) ? strlen(file_path) : strlen(image_name);
+	strncat(file_path, image_name, cp_len);
 	strncat(file_path, ".bin", 5);
 
 	vm->hbin = fopen(file_path, "rwb");
@@ -148,13 +149,8 @@ static inline uint32_t vm_ret(struct vm_thread *vm_th) {
 }
 
 static inline int64_t vm_read_mem(struct vm_thread *vm_th, struct esetvm2_instruction instr, int index) {
-	int bytes = instr.mem_bytes[index] - 1;
-	int64_t val = vm->data[REGS(ARGS(index)) + bytes];
-	int reg_index = REGS(ARGS(index));
-
-	while(bytes-- > 0)
-		val = (val<<8) | vm->data[reg_index + bytes];
-	
+	int64_t val = 0;
+	memcpy(&val, &vm->data[REGS(ARGS(index))], instr.mem_bytes[index]);
 	return val;
 }
 
@@ -245,6 +241,7 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		//case 11: // write
 		//break;
 		case 12: // consoleRead
+			printf("> ");
 			scanf("%lx", &val);
 			WARGX(val);
 			vm_shift_ptr(vm_th, instr.len);
