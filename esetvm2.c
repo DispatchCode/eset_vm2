@@ -32,7 +32,7 @@ struct esetvm2 *vm;
 
 /* Write to the destination, either memory or register  */
 #define WARGX(_val)												\
-{														\
+{				\
 	if(instr.mem_bytes[dst_index])										\
 		memcpy(&vm->data[REGS(ARGS(dst_index))], &_val, instr.mem_bytes[dst_index]);			\
 	else													\
@@ -68,6 +68,8 @@ static void init_vm_instance(FILE * fp, int file_size)
 	vm->thread_state[0].ip = 0;
 
 	vm->threads = calloc(10, sizeof(pthread_t));
+
+	vm->locks = calloc(10, sizeof(struct esetvm2_lock));
 }
 
 static void load_into_memory(struct esetvm2hdr *vm_hdr, uint8_t *buff) 
@@ -154,6 +156,93 @@ static inline int64_t vm_read_mem(struct vm_thread *vm_th, struct esetvm2_instru
 	return val;
 }
 
+static inline int vm_del_lock(int64_t lock_obj) {
+	for(int i=0; i < vm->lock_tos; i++) {
+		if(vm->locks[i].lock_obj == lock_obj) {
+			vm->locks[i].lock_obj = -1;
+			break;
+		}
+	}
+}
+
+static inline int vm_store_lock(int64_t lock_obj) {
+	int index = -1, i;
+
+	// TODO check locks max size
+	for(i=0; i < vm->lock_tos; i++) {
+		if((vm->locks[i].lock_obj == -1 && index == -1) || vm->locks[i].lock_obj == lock_obj) { 
+			index = i;
+			break;
+		}
+	}
+
+	// end of the array: add new element
+	if(i == vm->lock_tos && index == -1) {
+		vm->lock_tos++;
+		index = i;
+	}
+
+	vm->locks[index].lock_obj = lock_obj;
+	
+	return i;
+}
+
+static inline int vm_lock_index(int64_t lock_obj) {
+	for(int i=0; i<vm->lock_tos; i++) {
+		if(vm->locks[i].lock_obj == lock_obj) return i;
+	}
+	return -1; // should never happen...
+}
+
+static void vm_unlock(int64_t lock_obj, int th_index) {
+	int sleeping_th;
+	int lock_index = vm_lock_index(lock_obj);
+
+	// we have waiters on this lock
+	if(likely(vm->locks[lock_index].tos)) {
+		sleeping_th = vm->locks[lock_index].threads[0];
+		vm->locks[lock_index].tos--;
+		memcpy(vm->locks[lock_index].threads, vm->locks[lock_index].threads+1, sizeof(int64_t)*vm->locks[lock_index].tos);
+	
+		// thread that will be woken up
+		vm->thread_state[sleeping_th].wait = 0;
+		pthread_cond_signal(&vm->thread_state[sleeping_th].cond_wait);
+	} 
+	else {
+		vm->locks[lock_index].locked = 0;
+		vm_del_lock(lock_obj);
+	}
+}
+
+static void vm_wait_on_lock(int th_index) {
+	pthread_mutex_lock(&vm->thread_state[th_index].lock_wait);
+	vm->thread_state[th_index].wait = 1;
+	
+	while(vm->thread_state[th_index].wait) {
+		pthread_cond_wait(&vm->thread_state[th_index].cond_wait, &vm->thread_state[th_index].lock_wait);
+	}
+	pthread_mutex_unlock(&vm->thread_state[th_index].lock_wait);
+}
+
+static void vm_try_lock(int64_t lock_obj, int th_index) {
+	int lock_index = vm_store_lock(lock_obj);
+	
+	// already locked, sleep waiting the lock!
+	if(vm->locks[lock_index].locked) {
+		pthread_mutex_lock(&vm->locks[lock_index].mutex_threads);
+		vm->locks[lock_index].threads[vm->locks[lock_index].tos++] = th_index;
+		pthread_mutex_unlock(&vm->locks[lock_index].mutex_threads);
+		
+		vm_wait_on_lock(th_index);
+	}
+	else {
+		// acquire the lock 
+		pthread_mutex_lock(&vm->locks[lock_index].mutex_locked);
+		vm->locks[lock_index].locked = 1;
+		pthread_mutex_unlock(&vm->locks[lock_index].mutex_locked);	
+	}
+}
+
 static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 {
 	int64_t val;
@@ -162,9 +251,10 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 	int dst_index;
 
 	info = instr_table[instr.op_table_index];
+	//printf("Mnemonic: %s\n", info.mnemonic);
 	dst_index = info.nr_args-1;
 	arg = ARGS(dst_index);
-	
+
 	switch(instr.op_table_index) {
 		case 0: // mov
 			val = RARGX(0);
@@ -177,7 +267,7 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		break;
 		case 2: // add
 			val = MATH_OP(+);
-			WARGX(val);	
+			WARGX(val);
 			vm_shift_ptr(vm_th, instr.len);
 		break;
 		case 3: // sub
@@ -275,6 +365,14 @@ static void vm_execute(struct vm_thread *vm_th, struct esetvm2_instruction instr
 		case 19: // ret
 			SET_IP(vm_ret(vm_th));
 		break;
+		case 20: // lock
+			vm_try_lock(RARGX(0), vm_th->index);
+			vm_shift_ptr(vm_th, instr.len);
+		break;
+		case 21: // unlock
+			vm_unlock(RARGX(0), vm_th->index);
+			vm_shift_ptr(vm_th, instr.len);
+		break;
 		default:
 			printf("\nWARNING: invalid opcode 0x%x. Stopping thread %d...\n", opcode_map[instr.op_table_index], vm_th->index);
 			vm_th->active = 0; 
@@ -293,13 +391,16 @@ void *vm_thread_run(struct vm_thread *vm_th)
 		struct esetvm2_instruction instr = decode(vm_th);
 
 		vm_execute(vm_th, instr);
-		
+		#ifdef DEBUG_PRINT_INSTR
+		printf("[Thread: %d] ", vm_th->index);	
+		#endif
+
 		#ifdef VM_PRINT_STATE
 			vm_print_internal_state(vm_th);
 		#endif
 		
 		// let other threads run
-		sleep(0.1);
+		//sleep(0.1);
 	}
 }
 
@@ -322,18 +423,16 @@ void vm_wait(struct vm_thread *vm_th, struct esetvm2_instruction instr)
 void vm_setup_new_thread(struct vm_thread *vm_th, struct esetvm2_instruction instr, uint32_t address) {
 	// TODO protect with mutex thread_count
 	int thread_count = vm->thread_count;
-
 	//printf("setup new thread (thread_count: %d)\n", thread_count);
-	
-	REGS(ARGS(0)) = thread_count;
 
 	//vm->thread_state = realloc(vm->thread_state, (1+thread_count)*sizeof(struct vm_thread));
 	vm->thread_state[thread_count].index = thread_count;
 	vm->thread_state[thread_count].active = 1;
 	vm->thread_state[thread_count].ip = address;
-	memcpy(&vm->thread_state[thread_count].regs, &vm_th->regs, 16*(sizeof(int64_t)));	
-
+	memcpy(&vm->thread_state[thread_count].regs, &vm_th->regs, sizeof(int64_t)*16);
 	//threads = realloc(threads, (thread_count+1)*sizeof(pthread_t));
+	
+	REGS(ARGS(0)) = thread_count;
 
 	pthread_create(&vm->threads[thread_count], NULL, (void*)vm_thread_run, (void*)&vm->thread_state[thread_count]);
 	pthread_detach(vm->threads[thread_count]);

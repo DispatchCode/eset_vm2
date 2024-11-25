@@ -33,8 +33,24 @@ struct vm_thread
 	uint32_t *call_stack;
 	int tos;
 
+	// wait for a mutex
+	int wait;
+
 	pthread_mutex_t lock_active;
 	pthread_cond_t cond_active;
+
+	pthread_mutex_t lock_wait;
+	pthread_cond_t cond_wait;
+};
+
+struct esetvm2_lock {
+	int64_t lock_obj;
+	int locked;
+	int threads[10];
+	int tos;
+
+	pthread_mutex_t mutex_locked;
+	pthread_mutex_t mutex_threads;
 };
 
 /* 
@@ -64,6 +80,9 @@ struct esetvm2
 	
 	// handle to a binary file
 	FILE *hbin;
+
+	struct esetvm2_lock *locks;
+	int lock_tos;
 };
 
 struct esetvm2hdr * vm_init(FILE *fp, int, char*);
