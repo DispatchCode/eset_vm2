@@ -297,9 +297,6 @@ void *vm_thread_run(struct vm_thread *vm_th)
 		#ifdef VM_PRINT_STATE
 			vm_print_internal_state(vm_th);
 		#endif
-		
-		// let other threads run
-		sleep(0.1);
 	}
 }
 
@@ -325,13 +322,13 @@ void vm_setup_new_thread(struct vm_thread *vm_th, struct esetvm2_instruction ins
 
 	//printf("setup new thread (thread_count: %d)\n", thread_count);
 	
-	REGS(ARGS(0)) = thread_count;
-
 	//vm->thread_state = realloc(vm->thread_state, (1+thread_count)*sizeof(struct vm_thread));
 	vm->thread_state[thread_count].index = thread_count;
 	vm->thread_state[thread_count].active = 1;
 	vm->thread_state[thread_count].ip = address;
 	memcpy(&vm->thread_state[thread_count].regs, &vm_th->regs, 16*(sizeof(int64_t)));	
+	
+	REGS(ARGS(0)) = thread_count;
 
 	//threads = realloc(threads, (thread_count+1)*sizeof(pthread_t));
 
